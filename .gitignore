@@ -1,0 +1,15 @@
+# 원본 점검자료 — 배포에 필요하지 않고(dashboard_data.js 로 이미 변환됨) 원시 자료이므로 추적하지 않는다.
+# 갱신이 필요하면 원본을 로컬에 두고 build_data.py 를 실행하면 된다.
+*.xlsx
+*.xls
+~$*
+
+# 도구 부산물
+.vercel
+node_modules/
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini

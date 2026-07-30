@@ -1,0 +1,1779 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>교육시설 안전점검 대시보드 · 2026년도 여름철</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;700;800&family=Outfit:wght@600&display=swap" rel="stylesheet"/>
+<style>
+/* ============================================================
+   Luminous Glass — stitch_indigo_glass_dashboard/DESIGN.md 토큰
+   외부 CSS 프레임워크 없음(내부망·오프라인 동작 보장)
+   ============================================================ */
+:root{
+  /* Material 토큰 (DESIGN.md 원본) */
+  --surface:#fcf8ff; --surface-container-lowest:#ffffff; --surface-container-low:#f5f2fe;
+  --surface-container:#efecf8; --surface-container-high:#e9e6f3; --surface-container-highest:#e4e1ed;
+  --on-surface:#1b1b23; --on-surface-variant:#464554;
+  --inverse-surface:#303038; --inverse-on-surface:#f2effb;
+  --outline:#767586; --outline-variant:#c7c4d7;
+  --primary:#4648d4; --on-primary:#ffffff; --primary-container:#6063ee;
+  --primary-fixed:#e1e0ff; --on-primary-fixed:#07006c; --on-primary-fixed-variant:#2f2ebe;
+  --secondary:#b90538; --secondary-container:#dc2c4f;
+  --tertiary:#006c49; --tertiary-container:#00885d;
+  --error:#ba1a1a; --error-container:#ffdad6; --on-error-container:#93000a;
+
+  /* 유리 카드 위 실효 표면색 — 팔레트 검증 기준면 */
+  --chart-surface:#f7f4fc;
+
+  /* 안전등급 스케일(status) — validate_palette.js 검증
+     worst adjacent CVD ΔE 15.5 · normal-vision 15.5 · 등급명 라벨 상시 동반 */
+  --g-a:#0a8a5c; --g-b:#4648d4; --g-c:#e0a416; --g-d:#e0384f; --g-e:#96131a; --g-x:#a29fb2;
+
+  /* 순차 램프(건수/밀도) — ordinal ALL PASS */
+  --seq-1:#a5a7ef; --seq-2:#8385e6; --seq-3:#6164dc; --seq-4:#4648d4; --seq-5:#3634b8; --seq-6:#252399;
+  /* 위험 램프(C이하율/지적률) — ordinal ALL PASS */
+  --risk-1:#ec9a85; --risk-2:#e07a63; --risk-3:#d15845; --risk-4:#bc3a2e; --risk-5:#a02620; --risk-6:#7d1714;
+  /* 발산(등급 전이) 개선 arm */
+  --imp-1:#9dd8bd; --imp-2:#5cbf95; --imp-3:#23a06e; --imp-4:#0a8a5c;
+  --neutral-cell:#e6e2f0;
+
+  --r-sm:.5rem; --r-md:.75rem; --r-lg:1rem; --r-xl:1.5rem; --r-full:9999px;
+  --gap:16px; --stack-lg:24px; --margin:20px;
+  --font: 'Plus Jakarta Sans','Pretendard Variable','Pretendard',-apple-system,BlinkMacSystemFont,
+          'Malgun Gothic','맑은 고딕','Apple SD Gothic Neo','Noto Sans KR',sans-serif;
+  --font-label:'Outfit','Plus Jakarta Sans','Pretendard',-apple-system,'Malgun Gothic',sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-text-size-adjust:100%}
+body{
+  font-family:var(--font); color:var(--on-surface); font-size:15px; line-height:1.6;
+  background:linear-gradient(-45deg,#e9d5ff,#fbcfe8,#dbeafe,#dcfce7);
+  background-size:400% 400%; animation:gradientShift 20s ease infinite;
+  background-attachment:fixed; min-height:100vh; overflow-x:hidden;
+}
+@keyframes gradientShift{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
+@media (prefers-reduced-motion:reduce){body{animation:none}*{transition:none!important}}
+
+/* ---------- 유리 표면 ---------- */
+.glass{
+  background:rgba(255,255,255,.85); backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px);
+  border:1px solid rgba(255,255,255,.5); border-radius:var(--r-xl);
+  box-shadow:0 10px 25px -5px rgba(99,102,241,.2);
+}
+.glass-bar{
+  background:rgba(255,255,255,.72); backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px);
+  border-bottom:1px solid rgba(255,255,255,.6);
+}
+
+/* ---------- 레이아웃 ---------- */
+.wrap{max-width:1600px;margin:0 auto;padding:0 var(--margin)}
+.grid{display:grid;grid-template-columns:repeat(12,1fr);gap:var(--stack-lg)}
+.c12{grid-column:span 12}.c7{grid-column:span 7}.c5{grid-column:span 5}
+.c6{grid-column:span 6}.c8{grid-column:span 8}.c4{grid-column:span 4}
+@media(max-width:1279px){.c7,.c5,.c6,.c8,.c4{grid-column:span 12}}
+
+/* ---------- 헤더 ---------- */
+header{position:sticky;top:0;z-index:60}
+.hd{display:flex;align-items:center;justify-content:space-between;gap:16px;height:64px}
+.hd-title{font-weight:800;font-size:19px;letter-spacing:-.02em;
+  background:linear-gradient(90deg,var(--primary),var(--secondary));
+  -webkit-background-clip:text;background-clip:text;color:transparent;white-space:nowrap}
+.hd-sub{font-family:var(--font-label);font-size:11px;font-weight:600;letter-spacing:.05em;
+  text-transform:uppercase;color:var(--on-surface-variant);opacity:.8}
+.hd-actions{display:flex;gap:8px;align-items:center}
+
+/* ---------- 버튼 / 칩 ---------- */
+button{font-family:inherit;font-size:inherit;cursor:pointer;border:none;background:none;color:inherit}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:var(--r-full);
+  font-size:13px;font-weight:700;background:rgba(255,255,255,.7);border:1px solid rgba(255,255,255,.8);
+  color:var(--on-surface-variant);transition:.15s;white-space:nowrap}
+.btn:hover{background:#fff;color:var(--primary);box-shadow:0 4px 12px rgba(99,102,241,.18)}
+.btn:active{transform:scale(.97)}
+.btn-primary{background:linear-gradient(135deg,var(--primary),var(--primary-container));color:#fff;
+  border-color:transparent;box-shadow:0 6px 18px rgba(70,72,212,.35)}
+.btn-primary:hover{background:linear-gradient(135deg,#3a3cc4,#5457e0);color:#fff}
+.seg{display:inline-flex;background:rgba(255,255,255,.6);border:1px solid rgba(255,255,255,.85);
+  border-radius:var(--r-full);padding:3px;gap:2px}
+.seg button{padding:5px 13px;border-radius:var(--r-full);font-size:12px;font-weight:700;
+  color:var(--on-surface-variant);transition:.15s}
+.seg button[aria-pressed="true"]{background:var(--primary);color:#fff;box-shadow:0 3px 10px rgba(70,72,212,.3)}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:5px 10px 5px 12px;border-radius:var(--r-full);
+  font-size:12px;font-weight:700;background:rgba(70,72,212,.12);color:var(--on-primary-fixed-variant);
+  border:1px solid rgba(70,72,212,.2)}
+.chip b{font-weight:800}
+.chip .x{width:16px;height:16px;border-radius:var(--r-full);background:rgba(70,72,212,.18);
+  display:grid;place-items:center;font-size:11px;line-height:1;cursor:pointer}
+.chip .x:hover{background:var(--primary);color:#fff}
+
+/* ---------- 필터 바 ---------- */
+.filters{position:sticky;top:64px;z-index:55;padding:12px 0 12px}
+.filters-inner{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.fsel{position:relative}
+.fsel>select{appearance:none;-webkit-appearance:none;font-family:inherit;font-size:12.5px;font-weight:700;
+  color:var(--on-surface-variant);background:rgba(255,255,255,.75);border:1px solid rgba(255,255,255,.9);
+  border-radius:var(--r-full);padding:8px 30px 8px 14px;cursor:pointer;max-width:230px;
+  text-overflow:ellipsis;transition:.15s}
+.fsel>select:hover{background:#fff;color:var(--primary)}
+.fsel>select:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 3px rgba(70,72,212,.18)}
+.fsel::after{content:"";position:absolute;right:13px;top:50%;width:6px;height:6px;pointer-events:none;
+  border-right:2px solid var(--outline);border-bottom:2px solid var(--outline);
+  transform:translateY(-70%) rotate(45deg)}
+.active-chips{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:10px}
+.active-chips:empty{display:none}
+
+/* ---------- 히어로 ---------- */
+.hero{position:relative;overflow:hidden;border-radius:32px;padding:30px 34px;color:#fff;
+  background:linear-gradient(135deg,#4f46e5 0%,#6d5ce8 55%,#8b5cf6 100%);
+  box-shadow:0 20px 45px -12px rgba(79,70,229,.5)}
+.hero .glow1{position:absolute;top:-70px;right:-50px;width:230px;height:230px;border-radius:50%;
+  background:rgba(255,255,255,.13);filter:blur(46px)}
+.hero .glow2{position:absolute;bottom:-70px;left:-40px;width:180px;height:180px;border-radius:50%;
+  background:rgba(220,44,79,.28);filter:blur(46px)}
+.hero-in{position:relative;z-index:1;display:flex;flex-wrap:wrap;gap:26px;
+  align-items:flex-end;justify-content:space-between}
+.hero-badge{display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,.18);
+  border:1px solid rgba(255,255,255,.3);padding:5px 14px;border-radius:var(--r-full);
+  font-family:var(--font-label);font-size:11px;font-weight:600;letter-spacing:.05em;text-transform:uppercase}
+.hero-badge i{width:7px;height:7px;border-radius:50%;background:#4ade80;animation:pulse 2.2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+.hero h2{font-size:clamp(22px,2.4vw,32px);font-weight:800;letter-spacing:-.02em;line-height:1.3;margin-top:14px}
+.hero h2 em{font-style:normal;font-size:1.28em;font-weight:800}
+.hero p{margin-top:8px;font-size:14px;opacity:.9;max-width:62ch}
+.hero-side{display:flex;gap:26px;flex-wrap:wrap}
+.hero-stat{min-width:104px}
+.hero-stat .k{font-family:var(--font-label);font-size:10.5px;font-weight:600;letter-spacing:.05em;
+  text-transform:uppercase;opacity:.78}
+.hero-stat .v{font-size:26px;font-weight:800;letter-spacing:-.02em;line-height:1.25}
+
+/* ---------- KPI ---------- */
+.kpis{display:grid;grid-template-columns:repeat(6,1fr);gap:var(--gap)}
+@media(max-width:1279px){.kpis{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:719px){.kpis{grid-template-columns:repeat(2,1fr)}}
+.kpi{padding:18px 18px 16px;display:flex;flex-direction:column;gap:10px}
+.kpi-top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+.kpi-ico{width:36px;height:36px;border-radius:var(--r-md);display:grid;place-items:center;
+  font-size:17px;flex:none}
+.kpi-badge{font-family:var(--font-label);font-size:10px;font-weight:600;letter-spacing:.04em;
+  padding:3px 8px;border-radius:var(--r-full);white-space:nowrap}
+.kpi-k{font-family:var(--font-label);font-size:11px;font-weight:600;letter-spacing:.05em;
+  text-transform:uppercase;color:var(--on-surface-variant)}
+.kpi-v{font-size:27px;font-weight:800;letter-spacing:-.02em;line-height:1.15}
+.kpi-sub{font-size:11.5px;color:var(--on-surface-variant);opacity:.85;line-height:1.35}
+
+/* ---------- 카드 ---------- */
+.card{padding:22px 24px 24px;display:flex;flex-direction:column;min-width:0}
+.card-hd{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;
+  flex-wrap:wrap;margin-bottom:6px}
+.card h3{font-size:16.5px;font-weight:800;letter-spacing:-.01em}
+.card .desc{font-size:12.5px;color:var(--on-surface-variant);opacity:.9;margin-top:3px;max-width:70ch}
+.card-body{margin-top:16px;min-width:0}
+
+/* ---------- 막대 / 스택 ---------- */
+.rows{display:flex;flex-direction:column;gap:2px}
+.row-h{display:grid;align-items:center;gap:10px;padding:0 8px 6px;
+  font-family:var(--font-label);font-size:10px;font-weight:600;letter-spacing:.05em;
+  text-transform:uppercase;color:var(--on-surface-variant);opacity:.75;
+  border-bottom:1px solid var(--outline-variant)}
+.row{display:grid;align-items:center;gap:10px;padding:7px 8px;border-radius:var(--r-md);
+  transition:background .12s;cursor:pointer}
+.row:hover{background:rgba(70,72,212,.06)}
+.row.on{background:rgba(70,72,212,.11);box-shadow:inset 0 0 0 1px rgba(70,72,212,.25)}
+.row-name{font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.num{font-variant-numeric:tabular-nums;font-size:12.5px;text-align:right;color:var(--on-surface-variant)}
+.num.strong{font-weight:800;color:var(--on-surface)}
+
+/* 100% 스택 (2px 표면 갭) */
+.stack{display:flex;gap:2px;height:15px;border-radius:4px;overflow:hidden;background:transparent;min-width:60px}
+.stack span{display:block;min-width:0;transition:opacity .12s}
+.stack span:first-child{border-radius:4px 0 0 4px}
+.stack span:last-child{border-radius:0 4px 4px 0}
+.stack span:only-child{border-radius:4px}
+
+/* 단일 값 막대 */
+.barwrap{position:relative;height:15px;border-radius:4px;background:rgba(70,72,212,.09);overflow:hidden}
+.barwrap i{position:absolute;left:0;top:0;bottom:0;border-radius:4px;display:block}
+.avgline{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--on-surface);opacity:.45}
+
+/* ---------- 히트맵 ---------- */
+.hm{display:grid;gap:2px;min-width:0}
+.hm-cell{border-radius:4px;padding:7px 4px;text-align:center;font-variant-numeric:tabular-nums;
+  font-size:11.5px;font-weight:700;cursor:pointer;transition:.12s;min-width:0}
+.hm-cell:hover{outline:2px solid var(--on-surface);outline-offset:1px}
+.hm-cell.on{outline:2px solid var(--primary);outline-offset:1px}
+.hm-lbl{font-size:11px;font-weight:700;color:var(--on-surface-variant);
+  display:flex;align-items:center;justify-content:flex-end;padding-right:6px;white-space:nowrap}
+.hm-top{font-size:10.5px;font-weight:700;color:var(--on-surface-variant);text-align:center;
+  padding-bottom:3px;white-space:nowrap}
+.hm-corner{font-family:var(--font-label);font-size:9.5px;font-weight:600;letter-spacing:.04em;
+  color:var(--on-surface-variant);opacity:.7;display:flex;align-items:flex-end;justify-content:flex-end;
+  padding:0 6px 3px 0;text-align:right;line-height:1.2}
+
+/* ---------- 범례 ---------- */
+.legend{display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin-top:14px;
+  font-size:11.5px;color:var(--on-surface-variant)}
+.legend .it{display:inline-flex;align-items:center;gap:5px}
+.legend .sw{width:11px;height:11px;border-radius:3px;flex:none}
+.ramp{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--on-surface-variant)}
+.ramp .steps{display:flex;gap:2px}
+.ramp .steps i{width:20px;height:10px;border-radius:2px;display:block}
+
+/* ---------- 시설유형 리스크 ---------- */
+.risk-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:var(--gap)}
+@media(max-width:719px){.risk-grid{grid-template-columns:1fr}}
+.risk-card{padding:16px 18px;border-radius:var(--r-lg);background:rgba(255,255,255,.62);
+  border:1px solid rgba(255,255,255,.85);cursor:pointer;transition:.15s;min-width:0}
+.risk-card:hover{background:#fff;box-shadow:0 8px 20px -6px rgba(99,102,241,.25)}
+.risk-card.on{box-shadow:inset 0 0 0 2px var(--primary)}
+.risk-card.alert{background:rgba(224,56,79,.07);border-color:rgba(224,56,79,.22)}
+.risk-card .rt{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.risk-card .rname{font-size:13.5px;font-weight:800}
+.risk-card .rpct{font-size:23px;font-weight:800;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.risk-card .rmeta{font-size:11.5px;color:var(--on-surface-variant);margin-top:2px}
+.risk-card .rbar{margin-top:11px}
+.tag{display:inline-block;font-family:var(--font-label);font-size:9.5px;font-weight:600;letter-spacing:.05em;
+  text-transform:uppercase;padding:3px 8px;border-radius:var(--r-full);margin-top:9px}
+
+/* ---------- 정합성 패널 (다크) ---------- */
+.dark-card{background:linear-gradient(150deg,#292933 0%,#33324a 100%);color:var(--inverse-on-surface);
+  border:1px solid rgba(255,255,255,.1);border-radius:var(--r-xl);padding:24px 26px 26px;
+  box-shadow:0 18px 40px -14px rgba(27,27,35,.55);position:relative;overflow:hidden}
+.dark-card::after{content:"";position:absolute;top:-90px;right:-60px;width:260px;height:260px;
+  border-radius:50%;background:rgba(120,120,255,.16);filter:blur(60px);pointer-events:none}
+.dark-card h3{font-size:16.5px;font-weight:800}
+.dark-card .desc{color:rgba(242,239,251,.72)}
+.dark-grid{display:grid;grid-template-columns:1.05fr 1fr;gap:26px;position:relative;z-index:1;margin-top:18px}
+@media(max-width:1023px){.dark-grid{grid-template-columns:1fr}}
+.dsub{font-family:var(--font-label);font-size:10.5px;font-weight:600;letter-spacing:.06em;
+  text-transform:uppercase;color:rgba(242,239,251,.62);margin-bottom:12px}
+.mrow{display:grid;grid-template-columns:96px 1fr 64px;gap:10px;align-items:center;padding:6px 0}
+.mrow .mn{font-size:12.5px;font-weight:700}
+.mrow .mv{font-variant-numeric:tabular-nums;font-size:12.5px;font-weight:800;text-align:right}
+.mbar{height:14px;border-radius:4px;background:rgba(255,255,255,.1);overflow:hidden;position:relative}
+.mbar i{position:absolute;left:0;top:0;bottom:0;border-radius:4px;display:block}
+.warns{display:flex;flex-direction:column;gap:7px}
+.warn{display:flex;align-items:center;gap:11px;padding:10px 13px;border-radius:var(--r-md);
+  background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.09);cursor:pointer;transition:.15s}
+.warn:hover{background:rgba(255,255,255,.14)}
+.warn.on{background:rgba(255,255,255,.18);box-shadow:inset 0 0 0 1px rgba(192,193,255,.55)}
+.warn .wi{width:26px;height:26px;border-radius:var(--r-sm);display:grid;place-items:center;
+  font-size:13px;flex:none;font-weight:800}
+.warn .wt{flex:1;min-width:0}
+.warn .wt b{display:block;font-size:12.5px;font-weight:700}
+.warn .wt span{display:block;font-size:11px;color:rgba(242,239,251,.6);line-height:1.35}
+.warn .wc{font-variant-numeric:tabular-nums;font-size:14px;font-weight:800;white-space:nowrap}
+
+/* ---------- 테이블 ---------- */
+.tbl-tools{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:12px}
+.search{flex:1;min-width:190px;position:relative}
+.search input{width:100%;font-family:inherit;font-size:13px;padding:9px 14px;border-radius:var(--r-full);
+  border:1px solid rgba(255,255,255,.9);background:rgba(255,255,255,.75);color:var(--on-surface)}
+.search input:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 3px rgba(70,72,212,.18);background:#fff}
+.tbl-scroll{overflow-x:auto;border-radius:var(--r-md);-webkit-overflow-scrolling:touch}
+table{width:100%;border-collapse:collapse;font-size:12.5px;min-width:940px}
+thead th{font-family:var(--font-label);font-size:10px;font-weight:600;letter-spacing:.05em;
+  text-transform:uppercase;color:var(--on-surface-variant);text-align:left;padding:9px 10px;
+  border-bottom:1px solid var(--outline-variant);white-space:nowrap;cursor:pointer;user-select:none}
+thead th:hover{color:var(--primary)}
+thead th.sorted{color:var(--primary)}
+tbody td{padding:9px 10px;border-bottom:1px solid rgba(199,196,215,.4);vertical-align:middle}
+tbody tr:hover{background:rgba(70,72,212,.05)}
+td.n{font-variant-numeric:tabular-nums;text-align:right}
+.gr{display:inline-flex;align-items:center;gap:5px;font-weight:800;font-size:11.5px;white-space:nowrap}
+.gr i{width:9px;height:9px;border-radius:3px;flex:none}
+.arrow{color:var(--on-surface-variant);opacity:.55;margin:0 3px}
+.rsn{display:inline-block;font-family:var(--font-label);font-size:9.5px;font-weight:600;letter-spacing:.04em;
+  padding:2px 7px;border-radius:var(--r-full);white-space:nowrap}
+.pager{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:14px;flex-wrap:wrap}
+.pager .info{font-size:12px;color:var(--on-surface-variant)}
+.pager .pg{display:flex;gap:5px;align-items:center}
+.pager .pg button{width:31px;height:31px;border-radius:var(--r-sm);font-size:12px;font-weight:700;
+  color:var(--on-surface-variant);background:rgba(255,255,255,.65);border:1px solid rgba(255,255,255,.9)}
+.pager .pg button:hover:not(:disabled){background:#fff;color:var(--primary)}
+.pager .pg button:disabled{opacity:.35;cursor:default}
+.pager .pg button.on{background:var(--primary);color:#fff;border-color:transparent}
+
+/* ---------- 툴팁 ---------- */
+#tip{position:fixed;z-index:200;pointer-events:none;opacity:0;transition:opacity .1s;
+  background:rgba(27,27,35,.95);color:#f2effb;padding:9px 12px;border-radius:var(--r-md);
+  font-size:12px;line-height:1.55;box-shadow:0 10px 28px rgba(0,0,0,.32);max-width:290px;
+  backdrop-filter:blur(6px)}
+#tip b{font-weight:800}
+#tip .tl{display:flex;justify-content:space-between;gap:14px}
+#tip .tl span:last-child{font-variant-numeric:tabular-nums;font-weight:700}
+#tip hr{border:none;border-top:1px solid rgba(255,255,255,.18);margin:6px 0}
+
+/* ---------- 기타 ---------- */
+.sec-title{display:flex;align-items:center;gap:10px;margin:2px 0 -6px}
+.sec-title h2{font-size:19px;font-weight:800;letter-spacing:-.02em}
+.sec-title .line{flex:1;height:1px;background:rgba(27,27,35,.12)}
+footer{padding:34px var(--margin) 46px;text-align:center;font-size:11.5px;
+  color:var(--on-surface-variant);opacity:.8;line-height:1.7}
+.note{font-size:11.5px;color:var(--on-surface-variant);opacity:.85;margin-top:12px;line-height:1.5}
+#loading{position:fixed;inset:0;display:grid;place-items:center;background:rgba(252,248,255,.9);z-index:300;
+  font-weight:700;color:var(--primary);gap:14px}
+.spin{width:34px;height:34px;border:3px solid rgba(70,72,212,.2);border-top-color:var(--primary);
+  border-radius:50%;animation:sp .8s linear infinite;margin:0 auto 12px}
+@keyframes sp{to{transform:rotate(360deg)}}
+.empty{padding:34px;text-align:center;color:var(--on-surface-variant);font-size:13px}
+
+/* ---------- 인쇄 ---------- */
+@media print{
+  @page{size:A4 landscape;margin:10mm}
+  body{background:#fff;animation:none}
+  header,.filters,.hd-actions,.pager,.tbl-tools{display:none!important}
+  .glass,.dark-card{box-shadow:none;border:1px solid #d5d2e0;break-inside:avoid;background:#fff}
+  .dark-card{background:#fff!important;color:#1b1b23}
+  .dark-card .desc,.dsub{color:#464554}
+  .warn{background:#f3f1fa;border-color:#ddd}
+  .hero{background:#4f46e5!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+}
+</style>
+</head>
+<body>
+
+<div id="loading"><div><div class="spin"></div>데이터를 불러오는 중…</div></div>
+
+<header>
+  <div class="glass-bar">
+    <div class="wrap hd">
+      <div style="min-width:0">
+        <div class="hd-title">교육시설 안전점검 대시보드</div>
+        <div class="hd-sub" id="hdSub">교육시설통합정보망 · 교육시설법 제23조</div>
+      </div>
+      <div class="hd-actions">
+        <button class="btn" id="btnPrint">인쇄 / PDF</button>
+        <button class="btn btn-primary" id="btnCsv">CSV 내보내기</button>
+      </div>
+    </div>
+  </div>
+</header>
+
+<div class="filters">
+  <div class="wrap">
+    <div class="glass" style="padding:12px 16px">
+      <div class="filters-inner" id="filterBar"></div>
+      <div class="active-chips" id="activeChips"></div>
+    </div>
+  </div>
+</div>
+
+<main class="wrap" style="padding-bottom:8px">
+  <div class="grid">
+
+    <!-- ① 히어로 -->
+    <section class="c12">
+      <div class="hero">
+        <div class="glow1"></div><div class="glow2"></div>
+        <div class="hero-in">
+          <div style="min-width:0;flex:1 1 420px">
+            <div class="hero-badge"><i></i><span id="heroScope">전국 전체</span></div>
+            <h2 id="heroLine">—</h2>
+            <p id="heroDesc">—</p>
+          </div>
+          <div class="hero-side" id="heroSide"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ② KPI -->
+    <section class="c12"><div class="kpis" id="kpis"></div></section>
+
+    <!-- ③ 시도교육청 -->
+    <section class="c7">
+      <div class="glass card">
+        <div class="card-hd">
+          <div>
+            <h3>시도교육청별 안전등급 분포</h3>
+            <p class="desc">막대는 금차안전등급 구성비입니다. 행을 클릭하면 해당 교육청으로 전체 대시보드가 좁혀집니다.</p>
+          </div>
+          <div class="seg" id="sidoSort"></div>
+        </div>
+        <div class="card-body" id="sidoChart"></div>
+        <div class="legend" id="gradeLegend"></div>
+      </div>
+    </section>
+
+    <!-- ④ 등급 전이 -->
+    <section class="c5">
+      <div class="glass card">
+        <div class="card-hd">
+          <div>
+            <h3>전차 → 금차 등급 전이</h3>
+            <p class="desc">붉은 칸은 등급이 떨어진 시설, 초록 칸은 개선된 시설입니다. 칸을 클릭하면 해당 시설만 봅니다.</p>
+          </div>
+        </div>
+        <div class="card-body" id="transChart"></div>
+        <div class="legend" id="transLegend"></div>
+      </div>
+    </section>
+
+    <!-- ⑤ 여름철 리스크 -->
+    <section class="c5">
+      <div class="glass card">
+        <div class="card-hd">
+          <div>
+            <h3>여름철 리스크 — 시설유형별</h3>
+            <p class="desc">호우·집중강우에 취약한 사면·옹벽을 건물과 분리해 봅니다. 수치는 C등급 이하 비율입니다.</p>
+          </div>
+        </div>
+        <div class="card-body"><div class="risk-grid" id="ftypeChart"></div></div>
+        <div class="legend" id="ftypeLegend"></div>
+        <p class="note" id="ftypeNote"></p>
+      </div>
+    </section>
+
+    <!-- ⑥ 학교급 × 설립구분 -->
+    <section class="c7">
+      <div class="glass card">
+        <div class="card-hd">
+          <div>
+            <h3>학교·기관 유형 × 설립구분</h3>
+            <p class="desc">칸의 색은 C등급 이하 비율, 숫자는 점검 건수입니다. 클릭하면 해당 조합만 봅니다.</p>
+          </div>
+          <div class="seg" id="crossMetric"></div>
+        </div>
+        <div class="card-body" id="crossChart"></div>
+        <div class="legend" id="crossLegend"></div>
+      </div>
+    </section>
+
+    <!-- ⑦ 시설주용도 -->
+    <section class="c6">
+      <div class="glass card">
+        <div class="card-hd">
+          <div>
+            <h3>시설주용도별 위험도 TOP 20</h3>
+            <p class="desc">교사동 못지않게 창고·숙직실·화장실 같은 저관심 시설의 등급이 낮습니다.</p>
+          </div>
+          <div class="seg" id="fuseMetric"></div>
+        </div>
+        <div class="card-body" id="fuseChart"></div>
+      </div>
+    </section>
+
+    <!-- ⑧ 노후도 -->
+    <section class="c6">
+      <div class="glass card">
+        <div class="card-hd">
+          <div>
+            <h3>경과연수별 등급 분포</h3>
+            <p class="desc">사용승인연도 기준. 노후화와 등급 하락의 관계를 보여주며 개축·리모델링 우선순위 근거가 됩니다.</p>
+          </div>
+        </div>
+        <div class="card-body" id="ageChart"></div>
+        <div class="legend" id="ageLegend"></div>
+      </div>
+    </section>
+
+    <!-- ⑨ 점검 품질 · 정합성 -->
+    <section class="c12">
+      <div class="dark-card">
+        <h3>점검 품질 &amp; 데이터 정합성 <span style="font-size:11px;font-weight:600;opacity:.6;letter-spacing:.05em">통합정보망 운영자 관점</span></h3>
+        <p class="desc" style="font-size:12.5px;margin-top:4px">점검 결과 자체가 아니라 <b>점검·입력이 균질하게 이뤄졌는지</b>를 봅니다. 항목을 클릭하면 해당 레코드만 필터링됩니다.</p>
+        <div class="dark-grid">
+          <div>
+            <div class="dsub">점검방법별 지적률 편차</div>
+            <div id="methodChart"></div>
+            <p style="font-size:11.5px;color:rgba(242,239,251,.62);margin-top:12px;line-height:1.5" id="methodNote"></p>
+          </div>
+          <div>
+            <div class="dsub">정합성 점검 항목</div>
+            <div class="warns" id="qualityList"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ⑩ 워치리스트 -->
+    <section class="c12">
+      <div class="glass card">
+        <div class="card-hd">
+          <div>
+            <h3>즉시조치 검토 대상</h3>
+            <p class="desc">D·E등급, 전차 대비 등급 하락, 지적사항 5건 이상에 해당하는 시설입니다. 현재 필터가 그대로 적용됩니다.</p>
+          </div>
+          <div class="seg" id="watchFilter"></div>
+        </div>
+        <div class="card-body">
+          <div class="tbl-tools">
+            <div class="search"><input id="watchSearch" type="search" placeholder="학교·기관명 또는 시설명 검색" autocomplete="off"/></div>
+            <button class="btn" id="btnCsvWatch">이 표 CSV 저장</button>
+          </div>
+          <div class="tbl-scroll">
+            <table id="watchTable">
+              <thead><tr id="watchHead"></tr></thead>
+              <tbody id="watchBody"></tbody>
+            </table>
+          </div>
+          <div class="pager">
+            <div class="info" id="watchInfo"></div>
+            <div class="pg" id="watchPager"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </div>
+</main>
+
+<footer>
+  <div id="footMeta"></div>
+  <div style="margin-top:6px">교육시설 등의 안전 및 유지관리 등에 관한 법률 제23조에 따른 교육시설통합정보망 · 내부 검토용</div>
+</footer>
+
+<div id="tip" role="tooltip"></div>
+
+<script src="dashboard_data.js"></script>
+<script>
+(function(){
+"use strict";
+
+/* ══════════════════════════════════════════════════════════════
+   0. 상수 · 유틸
+   ══════════════════════════════════════════════════════════════ */
+var D = window.SAFETY_DATA;
+if(!D){ document.getElementById('loading').innerHTML =
+  '<div style="text-align:center;color:#ba1a1a">dashboard_data.js 를 찾을 수 없습니다.<br>'+
+  '<span style="font-weight:400;font-size:13px">build_data.py 를 먼저 실행하세요.</span></div>'; return; }
+
+var N = D.meta.rows;
+var BASE_YEAR = D.meta.baseYear || 2026;
+
+var GRADES = ['A등급','B등급','C등급','D등급','E등급'];
+var GCOLOR = {'A등급':'#0a8a5c','B등급':'#4648d4','C등급':'#e0a416','D등급':'#e0384f','E등급':'#96131a'};
+var GX = '#a29fb2';                       // 미지정/미기재
+var SEQ  = ['#a5a7ef','#8385e6','#6164dc','#4648d4','#3634b8','#252399'];
+var RISK = ['#ec9a85','#e07a63','#d15845','#bc3a2e','#a02620','#7d1714'];
+var IMP  = ['#9dd8bd','#5cbf95','#23a06e','#0a8a5c'];
+var NEUTRAL = '#e6e2f0';
+var AGE_LABELS = ['5년 미만','5~9년','10~19년','20~29년','30~39년','40년 이상','미기재'];
+
+var fmt   = function(n){ return (n||0).toLocaleString('ko-KR'); };
+var pct   = function(a,b,d){ return b>0 ? (a/b*100).toFixed(d===undefined?1:d) : '0.0'; };
+var pctS  = function(a,b,d){ return pct(a,b,d)+'%'; };
+var esc   = function(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){
+  return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); };
+var $     = function(id){ return document.getElementById(id); };
+
+/* 배경 대비로 글자색 결정 */
+function inkOn(hex){
+  var r=parseInt(hex.substr(1,2),16), g=parseInt(hex.substr(3,2),16), b=parseInt(hex.substr(5,2),16);
+  return (0.299*r+0.587*g+0.114*b) > 150 ? '#1b1b23' : '#ffffff';
+}
+/* 값 → 램프 단계 (임계 기반, 클래스 6개 이하) */
+function rampStep(v, breaks){
+  for(var i=0;i<breaks.length;i++) if(v < breaks[i]) return i;
+  return breaks.length;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   1. 디코딩
+   ══════════════════════════════════════════════════════════════ */
+function b64bytes(s){
+  var bin = atob(s), len = bin.length, out = new Uint8Array(len);
+  for(var i=0;i<len;i++) out[i] = bin.charCodeAt(i);
+  return out;
+}
+function decodeCol(s, wide){
+  var b = b64bytes(s);
+  if(!wide) return b;
+  var out = new Uint16Array(b.length>>1);
+  for(var i=0;i<out.length;i++) out[i] = b[i*2] | (b[i*2+1]<<8);   // little-endian 고정
+  return out;
+}
+
+var WIDE = {}; (D.wide||[]).forEach(function(k){ WIDE[k]=1; });
+var COL = {}, DICT = D.dict;
+Object.keys(D.cols).forEach(function(k){ COL[k] = decodeCol(D.cols[k], !!WIDE[k]); });
+var JI = b64bytes(D.ji);
+var YR = decodeCol(D.yr, true);
+
+/* 사전 인덱스 헬퍼 */
+function idxOf(dim, label){ var a = DICT[dim]; for(var i=0;i<a.length;i++) if(a[i]===label) return i; return -1; }
+
+/* 등급 dict index → 0..4 (A~E), 그 외 -1 */
+function gradeMap(dim){
+  var m = new Int8Array(DICT[dim].length).fill(-1);
+  DICT[dim].forEach(function(lab,i){ var p = GRADES.indexOf(lab); if(p>=0) m[i]=p; });
+  return m;
+}
+var CURG = gradeMap('cur'), PREVG = gradeMap('prev');
+
+/* 경과연수 버킷 (0..5 = 구간, 6 = 미기재) */
+var AGE = new Uint8Array(N);
+for(var i=0;i<N;i++){
+  var y = YR[i];
+  if(!y){ AGE[i]=6; }
+  else { var a = BASE_YEAR - y;
+    AGE[i] = a<5?0 : a<10?1 : a<20?2 : a<30?3 : a<40?4 : 5; }
+}
+
+/* 정합성 플래그 (비트마스크) */
+var F_FUSE=1, F_YEAR=2, F_YEAR_ODD=4, F_STATUS=8, F_UNDONE=16, F_GRADE=32, F_CONFLICT=64, F_DROP=128;
+var FLAG = new Uint8Array(N);
+(function(){
+  var fuseMiss = idxOf('fuse','(미기재)');
+  var curMiss  = idxOf('cur','(미기재)');
+  var doneN    = idxOf('done','N');
+  var badOp = {}, badF = {};
+  ['폐교(폐원)','휴교(휴원)'].forEach(function(l){ var k=idxOf('opstat',l); if(k>=0) badOp[k]=1; });
+  ['불용','철거','제외'].forEach(function(l){ var k=idxOf('fstat',l); if(k>=0) badF[k]=1; });
+  for(var i=0;i<N;i++){
+    var f = 0, y = YR[i], cg = CURG[COL.cur[i]], pg = PREVG[COL.prev[i]];
+    if(COL.fuse[i]===fuseMiss) f|=F_FUSE;
+    if(!y) f|=F_YEAR; else if(y > BASE_YEAR || y < 1930) f|=F_YEAR_ODD;
+    if(badOp[COL.opstat[i]] || badF[COL.fstat[i]]) f|=F_STATUS;
+    if(COL.done[i]===doneN) f|=F_UNDONE;
+    if(COL.cur[i]===curMiss) f|=F_GRADE;
+    if(cg>=0 && cg<=1 && JI[i]>=3) f|=F_CONFLICT;          // 등급 양호(A·B)인데 지적 3건 이상
+    if(cg>=0 && pg>=0 && cg>pg) f|=F_DROP;
+    FLAG[i]=f;
+  }
+})();
+
+/* ══════════════════════════════════════════════════════════════
+   2. 필터 상태
+   ══════════════════════════════════════════════════════════════ */
+var FILTER_DEFS = [
+  {key:'sido',   label:'시도교육청'},
+  {key:'office', label:'교육지원청', parent:'sido'},
+  {key:'level',  label:'학교·기관 유형'},
+  {key:'estab',  label:'설립구분'},
+  {key:'ftype',  label:'시설유형'},
+  {key:'fuse',   label:'시설주용도'},
+  {key:'method', label:'점검방법'},
+  {key:'cur',    label:'금차안전등급'}
+];
+
+var F = { dim:{}, age:null, flag:null, trans:null, cross:null };
+FILTER_DEFS.forEach(function(d){ F.dim[d.key] = null; });
+
+var MASK = new Uint8Array(N);
+
+function buildMask(){
+  var dimKeys = [], dimVals = [];
+  FILTER_DEFS.forEach(function(d){
+    if(F.dim[d.key] !== null){ dimKeys.push(COL[d.key]); dimVals.push(F.dim[d.key]); }
+  });
+  var nk = dimKeys.length;
+  var age = F.age, flag = F.flag, tr = F.trans, cr = F.cross;
+  var colLevel = COL.level, colEstab = COL.estab;
+  for(var i=0;i<N;i++){
+    var ok = 1;
+    for(var k=0;k<nk;k++){ if(dimKeys[k][i] !== dimVals[k]){ ok=0; break; } }
+    if(ok && age!==null && AGE[i]!==age) ok=0;
+    if(ok && flag!==null && !(FLAG[i]&flag)) ok=0;
+    if(ok && tr && (COL.prev[i]!==tr[0] || COL.cur[i]!==tr[1])) ok=0;
+    if(ok && cr && (colLevel[i]!==cr[0] || colEstab[i]!==cr[1])) ok=0;
+    MASK[i]=ok;
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════
+   3. 집계 (마스크 1회 순회로 전 카드 동시 산출)
+   ══════════════════════════════════════════════════════════════ */
+var AGG_DIMS = ['sido','office','level','estab','ftype','fuse','method'];
+
+function newBucket(card){
+  return { n:new Float64Array(card), ji:new Float64Array(card),
+           cde:new Float64Array(card), g:new Float64Array(card*6) };
+}
+
+function compute(){
+  buildMask();
+  var R = { total:0, ji:0, cde:0, dropped:0, improved:0, watch:0, old40:0,
+            grades:new Float64Array(6), dim:{}, age:newBucket(7),
+            cross:newBucket(DICT.level.length*DICT.estab.length),
+            trans:new Float64Array(DICT.prev.length*DICT.cur.length),
+            flags:new Float64Array(9) };
+  AGG_DIMS.forEach(function(k){ R.dim[k] = newBucket(DICT[k].length); });
+
+  var nCur = DICT.cur.length, nEstab = DICT.estab.length;
+  var buckets = AGG_DIMS.map(function(k){ return [COL[k], R.dim[k]]; });
+
+  for(var i=0;i<N;i++){
+    if(!MASK[i]) continue;
+    var g = CURG[COL.cur[i]], slot = g<0 ? 5 : g;
+    var j = JI[i], bad = (g>=2) ? 1 : 0;
+    R.total++; R.ji += j; R.cde += bad; R.grades[slot]++;
+
+    var f = FLAG[i];
+    if(f&F_DROP) R.dropped++;
+    var pg = PREVG[COL.prev[i]];
+    if(pg>=0 && g>=0 && g<pg) R.improved++;
+    if((f&F_DROP) || g>=3 || j>=5) R.watch++;
+    if(AGE[i]===5) R.old40++;
+
+    for(var b=0;b<buckets.length;b++){
+      var v = buckets[b][0][i], B = buckets[b][1];
+      B.n[v]++; B.ji[v]+=j; B.cde[v]+=bad; B.g[v*6+slot]++;
+    }
+    var a = AGE[i];
+    R.age.n[a]++; R.age.ji[a]+=j; R.age.cde[a]+=bad; R.age.g[a*6+slot]++;
+
+    var c = COL.level[i]*nEstab + COL.estab[i];
+    R.cross.n[c]++; R.cross.ji[c]+=j; R.cross.cde[c]+=bad; R.cross.g[c*6+slot]++;
+
+    R.trans[COL.prev[i]*nCur + COL.cur[i]]++;
+
+    if(f&F_FUSE)     R.flags[0]++;
+    if(f&F_YEAR)     R.flags[1]++;
+    if(f&F_YEAR_ODD) R.flags[2]++;
+    if(f&F_STATUS)   R.flags[3]++;
+    if(f&F_UNDONE)   R.flags[4]++;
+    if(f&F_GRADE)    R.flags[5]++;
+    if(f&F_CONFLICT) R.flags[6]++;
+  }
+  return R;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   4. 툴팁
+   ══════════════════════════════════════════════════════════════ */
+var tipEl = $('tip'), tipOn = false;
+function tipShow(html, ev){
+  tipEl.innerHTML = html; tipEl.style.opacity = '1'; tipOn = true; tipMove(ev);
+}
+function tipMove(ev){
+  if(!tipOn) return;
+  var r = tipEl.getBoundingClientRect();
+  var x = ev.clientX + 16, y = ev.clientY + 16;
+  if(x + r.width  > window.innerWidth  - 10) x = ev.clientX - r.width  - 16;
+  if(y + r.height > window.innerHeight - 10) y = ev.clientY - r.height - 16;
+  tipEl.style.left = Math.max(8,x)+'px'; tipEl.style.top = Math.max(8,y)+'px';
+}
+function tipHide(){ tipEl.style.opacity='0'; tipOn=false; }
+function bindTip(node, htmlFn){
+  node.addEventListener('mouseenter', function(e){ tipShow(htmlFn(), e); });
+  node.addEventListener('mousemove', tipMove);
+  node.addEventListener('mouseleave', tipHide);
+  node.addEventListener('focus', function(e){
+    var r = node.getBoundingClientRect();
+    tipShow(htmlFn(), {clientX:r.left+r.width/2, clientY:r.top});
+  });
+  node.addEventListener('blur', tipHide);
+}
+function tipRow(k,v){ return '<div class="tl"><span>'+k+'</span><span>'+v+'</span></div>'; }
+function gradeTip(g, total){
+  var s = '';
+  for(var i=0;i<5;i++) if(g[i]) s += tipRow(GRADES[i], fmt(g[i])+' ('+pctS(g[i],total)+')');
+  if(g[5]) s += tipRow('미기재', fmt(g[5]));
+  return s;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   5. 렌더 — 필터 바
+   ══════════════════════════════════════════════════════════════ */
+/* 필터 옵션 건수 — 각 차원은 "자기 자신을 뺀 나머지 필터"를 적용한 값이라
+   차원별로 전수 순회하면 N×차원수가 된다. 실패한 제약의 개수를 세는 방식으로
+   전체를 1회만 순회한다: 실패 0개면 모든 차원에, 정확히 1개면 그 차원에만 가산. */
+var OPT_COUNTS = null, OPT_AGE = null;
+function computeFilterCounts(){
+  var keys = FILTER_DEFS.map(function(d){ return d.key; });
+  var cols = keys.map(function(k){ return COL[k]; });
+  var arrs = keys.map(function(k){ return new Float64Array(DICT[k].length); });
+  var nd = keys.length;
+  var age = new Float64Array(7);
+
+  var aIdx = [], aCol = [], aVal = [];
+  for(var j=0;j<nd;j++) if(F.dim[keys[j]]!==null){
+    aIdx.push(j); aCol.push(cols[j]); aVal.push(F.dim[keys[j]]);
+  }
+  var na = aIdx.length, ageF = F.age;
+
+  for(var i=0;i<N;i++){
+    var fails = 0, failDim = -1;
+    for(var k=0;k<na;k++){
+      if(aCol[k][i] !== aVal[k]){ fails++; failDim = aIdx[k]; if(fails>1) break; }
+    }
+    if(fails === 0) age[AGE[i]]++;                       // 경과연수 옵션은 차원 필터만 반영
+    if(ageF !== null && AGE[i] !== ageF) continue;        // 경과연수 필터는 모든 차원에 적용
+    if(fails === 0){ for(var j2=0;j2<nd;j2++) arrs[j2][cols[j2][i]]++; }
+    else if(fails === 1){ arrs[failDim][cols[failDim][i]]++; }
+  }
+  OPT_COUNTS = {}; keys.forEach(function(k,j){ OPT_COUNTS[k] = arrs[j]; });
+  OPT_AGE = age;
+}
+
+function optionsFor(key){
+  var counts = OPT_COUNTS[key], out = [];
+  DICT[key].forEach(function(lab,i){ if(counts[i]>0) out.push([i,lab,counts[i]]); });
+  out.sort(function(a,b){ return b[2]-a[2]; });
+  return out;
+}
+
+function renderFilters(){
+  var bar = $('filterBar'); bar.innerHTML = '';
+  FILTER_DEFS.forEach(function(d){
+    if(d.parent && F.dim[d.parent]===null && F.dim[d.key]===null) return;   // 종속 필터
+    var wrap = document.createElement('div'); wrap.className = 'fsel';
+    var sel = document.createElement('select');
+    sel.setAttribute('aria-label', d.label);
+    var opts = optionsFor(d.key);
+    var html = '<option value="">'+esc(d.label)+' 전체</option>';
+    opts.forEach(function(o){
+      html += '<option value="'+o[0]+'"'+(F.dim[d.key]===o[0]?' selected':'')+'>'+
+              esc(o[1])+' ('+fmt(o[2])+')</option>';
+    });
+    sel.innerHTML = html;
+    sel.onchange = function(){
+      F.dim[d.key] = this.value==='' ? null : +this.value;
+      if(d.key==='sido') F.dim.office = null;
+      F.trans = null; F.cross = null;
+      refresh();
+    };
+    wrap.appendChild(sel); bar.appendChild(wrap);
+  });
+
+  /* 경과연수 */
+  var wrap = document.createElement('div'); wrap.className='fsel';
+  var sel = document.createElement('select'); sel.setAttribute('aria-label','경과연수');
+  var h = '<option value="">경과연수 전체</option>';
+  AGE_LABELS.forEach(function(l,i){
+    if(!OPT_AGE[i] && F.age!==i) return;
+    h += '<option value="'+i+'"'+(F.age===i?' selected':'')+'>'+l+' ('+fmt(OPT_AGE[i])+')</option>';
+  });
+  sel.innerHTML = h;
+  sel.onchange = function(){ F.age = this.value==='' ? null : +this.value; refresh(); };
+  wrap.appendChild(sel); $('filterBar').appendChild(wrap);
+
+  /* 초기화 */
+  var any = FILTER_DEFS.some(function(d){ return F.dim[d.key]!==null; }) ||
+            F.age!==null || F.flag!==null || F.trans || F.cross;
+  if(any){
+    var b = document.createElement('button');
+    b.className='btn'; b.textContent='필터 초기화';
+    b.onclick = resetAll;
+    $('filterBar').appendChild(b);
+  }
+  renderChips();
+}
+
+var FLAG_LABELS = {};
+FLAG_LABELS[F_FUSE]='시설주용도 미기재'; FLAG_LABELS[F_YEAR]='사용승인연도 미기재';
+FLAG_LABELS[F_YEAR_ODD]='사용승인연도 이상치'; FLAG_LABELS[F_STATUS]='폐교·불용 시설';
+FLAG_LABELS[F_UNDONE]='점검 미완료'; FLAG_LABELS[F_GRADE]='금차등급 누락';
+FLAG_LABELS[F_CONFLICT]='등급·지적 불일치';
+
+function renderChips(){
+  var box = $('activeChips'); box.innerHTML='';
+  function chip(label, val, clear){
+    var c = document.createElement('span'); c.className='chip';
+    c.innerHTML = esc(label)+' <b>'+esc(val)+'</b>';
+    var x = document.createElement('span'); x.className='x'; x.textContent='×';
+    x.title='해제'; x.onclick=function(){ clear(); refresh(); };
+    c.appendChild(x); box.appendChild(c);
+  }
+  FILTER_DEFS.forEach(function(d){
+    if(F.dim[d.key]===null) return;
+    chip(d.label, DICT[d.key][F.dim[d.key]], function(){
+      F.dim[d.key]=null; if(d.key==='sido') F.dim.office=null; });
+  });
+  if(F.age!==null) chip('경과연수', AGE_LABELS[F.age], function(){ F.age=null; });
+  if(F.flag!==null) chip('정합성', FLAG_LABELS[F.flag]||'—', function(){ F.flag=null; });
+  if(F.trans) chip('등급 전이', DICT.prev[F.trans[0]]+' → '+DICT.cur[F.trans[1]], function(){ F.trans=null; });
+  if(F.cross) chip('유형×설립', DICT.level[F.cross[0]]+' · '+DICT.estab[F.cross[1]], function(){ F.cross=null; });
+}
+
+function resetAll(){
+  FILTER_DEFS.forEach(function(d){ F.dim[d.key]=null; });
+  F.age=null; F.flag=null; F.trans=null; F.cross=null;
+  watchPage=1; refresh();
+}
+
+/* ══════════════════════════════════════════════════════════════
+   6. 렌더 — 히어로 · KPI
+   ══════════════════════════════════════════════════════════════ */
+function scopeName(){
+  if(F.dim.office!==null) return DICT.office[F.dim.office];
+  if(F.dim.sido!==null)  return DICT.sido[F.dim.sido];
+  return '전국';
+}
+
+function renderHero(R){
+  var scope = scopeName();
+  var parts = [];
+  FILTER_DEFS.forEach(function(d){
+    if(d.key==='sido'||d.key==='office') return;
+    if(F.dim[d.key]!==null) parts.push(DICT[d.key][F.dim[d.key]]);
+  });
+  if(F.age!==null) parts.push(AGE_LABELS[F.age]);
+  $('heroScope').textContent = scope + (parts.length ? ' · '+parts.join(' · ') : ' 전체');
+
+  if(R.total===0){
+    $('heroLine').innerHTML = '조건에 해당하는 시설이 없습니다.';
+    $('heroDesc').textContent = '필터를 완화해 보세요.';
+    $('heroSide').innerHTML = '';
+    return;
+  }
+  $('heroLine').innerHTML = esc(scope)+' 점검 시설 '+fmt(R.total)+'개 중 <em>'+fmt(R.cde)+'개</em>가 C등급 이하입니다.';
+  var worst = R.grades[3]+R.grades[4];
+  $('heroDesc').textContent =
+    'D·E등급 '+fmt(worst)+'개, 전차 대비 등급 하락 '+fmt(R.dropped)+'개, 지적사항 '+fmt(R.ji)+'건이 확인되었습니다. '+
+    '아래 카드를 클릭하면 대시보드 전체가 해당 범위로 좁혀집니다.';
+
+  var side = [
+    ['C등급 이하 비율', pctS(R.cde,R.total,2)],
+    ['시설 100개당 지적', (R.total? (R.ji/R.total*100).toFixed(1):'0.0')+'건'],
+    ['40년 이상 비중', pctS(R.old40,R.total,1)]
+  ];
+  $('heroSide').innerHTML = side.map(function(s){
+    return '<div class="hero-stat"><div class="k">'+esc(s[0])+'</div><div class="v">'+esc(s[1])+'</div></div>';
+  }).join('');
+}
+
+/* 전국 기준선 대비 격차(%p) 배지 — 필터가 걸렸을 때만 의미가 있다 */
+function deltaBadge(rate, baseRate, higherIsBad){
+  if(BASE === null || LAST === BASE) return null;
+  var d = (rate - baseRate) * 100;
+  if(Math.abs(d) < 0.05) return {text:'전국 수준', bad:false};
+  var sign = d > 0 ? '+' : '−';
+  return {text:'전국 대비 '+sign+Math.abs(d).toFixed(1)+'%p',
+          bad: higherIsBad ? d > 0 : d < 0};
+}
+
+function renderKpis(R){
+  var worst = R.grades[3]+R.grades[4];
+  var per100 = R.total ? (R.ji/R.total*100).toFixed(1) : '0.0';
+  var cdeD = deltaBadge(R.total?R.cde/R.total:0, BASE.total?BASE.cde/BASE.total:0, true);
+  var jiD  = deltaBadge(R.total?R.ji/R.total:0,  BASE.total?BASE.ji/BASE.total:0,  true);
+  var oldD = deltaBadge(R.total?R.old40/R.total:0, BASE.total?BASE.old40/BASE.total:0, true);
+
+  var items = [
+    {k:'점검 시설',  v:fmt(R.total), sub:D.meta.plan, ico:'🏫', tint:'70,72,212',
+     badge:(R.total===BASE.total ? '전수' : pctS(R.total,BASE.total,1)+' 선택'), bad:false},
+    {k:'C등급 이하', v:fmt(R.cde),  sub:'전체의 '+pctS(R.cde,R.total,2), ico:'⚠️', tint:'224,164,22',
+     badge:(cdeD?cdeD.text:'전수 기준 6.81%'), bad:(cdeD?cdeD.bad:false)},
+    {k:'D·E등급',    v:fmt(worst),  sub:'중점 관리 필요', ico:'🚨', tint:'224,56,79',
+     badge:(worst?'즉시 확인':'없음'), bad:worst>0},
+    {k:'지적사항',   v:fmt(R.ji),   sub:'시설 100개당 '+per100+'건', ico:'📋', tint:'70,72,212',
+     badge:(jiD?jiD.text:'100개당 '+per100+'건'), bad:(jiD?jiD.bad:false)},
+    {k:'등급 하락',  v:fmt(R.dropped), sub:'개선 '+fmt(R.improved)+'개 대비', ico:'📉', tint:'224,56,79',
+     badge:(R.improved?('개선 '+fmt(R.improved)):'개선 없음'), bad:R.dropped>R.improved},
+    {k:'40년 이상',  v:fmt(R.old40), sub:'노후 시설 비중 '+pctS(R.old40,R.total,1), ico:'🏚️', tint:'70,72,212',
+     badge:(oldD?oldD.text:'전수 기준 23.1%'), bad:(oldD?oldD.bad:false)}
+  ];
+  $('kpis').innerHTML = items.map(function(it){
+    var col = it.bad ? '224,56,79' : (it.tint==='224,164,22' ? '176,116,0' : it.tint);
+    return '<div class="glass kpi">'+
+      '<div class="kpi-top">'+
+        '<div class="kpi-ico" style="background:rgba('+it.tint+',.12)">'+it.ico+'</div>'+
+        '<span class="kpi-badge" style="background:rgba('+col+',.13);color:rgb('+col+')">'+esc(it.badge)+'</span>'+
+      '</div>'+
+      '<div><div class="kpi-k">'+esc(it.k)+'</div><div class="kpi-v">'+esc(it.v)+'</div></div>'+
+      '<div class="kpi-sub">'+esc(it.sub)+'</div></div>';
+  }).join('');
+}
+
+/* ══════════════════════════════════════════════════════════════
+   7. 렌더 — 공통 마크
+   ══════════════════════════════════════════════════════════════ */
+function stackEl(g, total){
+  var s = document.createElement('div'); s.className='stack';
+  for(var i=0;i<6;i++){
+    if(!g[i]) continue;
+    var seg = document.createElement('span');
+    seg.style.flex = g[i]+' 0 0px';
+    seg.style.background = i<5 ? GCOLOR[GRADES[i]] : GX;
+    s.appendChild(seg);
+  }
+  if(!s.children.length){ var e=document.createElement('span');
+    e.style.flex='1 0 0px'; e.style.background='rgba(70,72,212,.08)'; s.appendChild(e); }
+  return s;
+}
+function barEl(value, max, color, avg){
+  var w = document.createElement('div'); w.className='barwrap';
+  var b = document.createElement('i');
+  b.style.width = (max>0 ? Math.max(value/max*100, value>0?1.2:0) : 0)+'%';
+  b.style.background = color;
+  w.appendChild(b);
+  if(avg!==undefined && max>0){
+    var a=document.createElement('span'); a.className='avgline';
+    a.style.left = Math.min(avg/max*100,100)+'%'; w.appendChild(a);
+  }
+  return w;
+}
+function gradeLegendHtml(extra){
+  var h = GRADES.map(function(g){
+    return '<span class="it"><i class="sw" style="background:'+GCOLOR[g]+'"></i>'+g+'</span>';
+  }).join('');
+  h += '<span class="it"><i class="sw" style="background:'+GX+'"></i>미기재</span>';
+  return h + (extra||'');
+}
+
+/* ══════════════════════════════════════════════════════════════
+   8. 렌더 — ③ 시도교육청
+   ══════════════════════════════════════════════════════════════ */
+var sidoSort = 'cde';
+var SORTS = [['cde','C등급 이하율'],['ji','지적률'],['n','점검 건수']];
+
+function renderSeg(elId, list, cur, onPick){
+  var box = $(elId); box.innerHTML='';
+  list.forEach(function(s){
+    var b=document.createElement('button');
+    b.textContent=s[1]; b.setAttribute('aria-pressed', cur===s[0]?'true':'false');
+    b.onclick=function(){ onPick(s[0]); };
+    box.appendChild(b);
+  });
+}
+
+function renderSido(R){
+  renderSeg('sidoSort', SORTS, sidoSort, function(v){ sidoSort=v; refresh(); });
+  var B = R.dim.sido, rows = [];
+  DICT.sido.forEach(function(lab,i){ if(B.n[i]>0) rows.push(i); });
+  var key = sidoSort;
+  rows.sort(function(a,b){
+    if(key==='n') return B.n[b]-B.n[a];
+    if(key==='ji') return (B.ji[b]/B.n[b])-(B.ji[a]/B.n[a]);
+    return (B.cde[b]/B.n[b])-(B.cde[a]/B.n[a]);
+  });
+
+  var host = $('sidoChart'); host.innerHTML='';
+  if(!rows.length){ host.innerHTML='<div class="empty">해당 조건의 데이터가 없습니다.</div>'; return; }
+
+  var GRID = 'grid-template-columns:minmax(96px,1.35fr) minmax(90px,2.1fr) 62px 62px 58px';
+  var head = document.createElement('div'); head.className='row-h'; head.style.cssText=GRID;
+  head.innerHTML = '<div>시도교육청</div><div>금차등급 구성</div>'+
+    '<div style="text-align:right">건수</div><div style="text-align:right">C이하</div><div style="text-align:right">지적률</div>';
+  host.appendChild(head);
+
+  var list = document.createElement('div'); list.className='rows'; host.appendChild(list);
+  var avgCde = R.total ? R.cde/R.total : 0;
+
+  rows.forEach(function(i){
+    var n=B.n[i], cde=B.cde[i], ji=B.ji[i], g=B.g.subarray(i*6,i*6+6);
+    var r = document.createElement('div'); r.className='row'+(F.dim.sido===i?' on':'');
+    r.style.cssText=GRID; r.tabIndex=0;
+    var nm = document.createElement('div'); nm.className='row-name'; nm.textContent=DICT.sido[i];
+    var st = stackEl(g,n);
+    var c1 = document.createElement('div'); c1.className='num strong'; c1.textContent=fmt(n);
+    var c2 = document.createElement('div'); c2.className='num'; c2.textContent=pctS(cde,n,1);
+    if(cde/n > avgCde*1.5 && n>=30) c2.style.color='var(--risk-5)', c2.style.fontWeight='800';
+    var c3 = document.createElement('div'); c3.className='num'; c3.textContent=pctS(ji,n,2);
+    r.appendChild(nm); r.appendChild(st); r.appendChild(c1); r.appendChild(c2); r.appendChild(c3);
+    bindTip(r, function(){
+      return '<b>'+esc(DICT.sido[i])+'</b><hr>'+
+        tipRow('점검 시설', fmt(n)) + tipRow('C등급 이하', fmt(cde)+' ('+pctS(cde,n,2)+')') +
+        tipRow('지적사항', fmt(ji)+'건') + '<hr>' + gradeTip(g,n);
+    });
+    r.onclick = function(){ F.dim.sido = (F.dim.sido===i?null:i); F.dim.office=null; refresh(); };
+    r.onkeydown = function(e){ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); r.onclick(); } };
+    list.appendChild(r);
+  });
+
+  $('gradeLegend').innerHTML = gradeLegendHtml(
+    '<span class="it" style="opacity:.8">클릭 → 해당 교육청으로 필터</span>');
+}
+
+/* ══════════════════════════════════════════════════════════════
+   9. 렌더 — ④ 등급 전이 매트릭스
+   ══════════════════════════════════════════════════════════════ */
+var TRANS_ORDER = ['A등급','B등급','C등급','D등급','E등급','미지정','(미기재)'];
+function orderedIdx(dim){
+  var out=[]; TRANS_ORDER.forEach(function(l){ var k=idxOf(dim,l); if(k>=0) out.push([k,l]); });
+  DICT[dim].forEach(function(l,i){ if(TRANS_ORDER.indexOf(l)<0) out.push([i,l]); });
+  return out;
+}
+
+function renderTrans(R){
+  var P = orderedIdx('prev'), C = orderedIdx('cur');
+  var nCur = DICT.cur.length;
+  var host = $('transChart'); host.innerHTML='';
+
+  var grid = document.createElement('div'); grid.className='hm';
+  grid.style.gridTemplateColumns = 'minmax(46px,auto) repeat('+C.length+',minmax(0,1fr))';
+
+  var corner = document.createElement('div'); corner.className='hm-corner';
+  corner.innerHTML = '전차 ↓<br>금차 →'; grid.appendChild(corner);
+  C.forEach(function(c){
+    var t=document.createElement('div'); t.className='hm-top';
+    t.textContent = c[1].replace('등급','').replace('(미기재)','미기재'); grid.appendChild(t);
+  });
+
+  var max=0;
+  P.forEach(function(p){ C.forEach(function(c){ var v=R.trans[p[0]*nCur+c[0]]; if(v>max) max=v; }); });
+  var lmax = Math.log(max+1) || 1;
+
+  P.forEach(function(p){
+    var lbl=document.createElement('div'); lbl.className='hm-lbl';
+    lbl.textContent = p[1].replace('등급','').replace('(미기재)','미기재'); grid.appendChild(lbl);
+    var pr = GRADES.indexOf(p[1]);
+    C.forEach(function(c){
+      var v = R.trans[p[0]*nCur+c[0]];
+      var cr = GRADES.indexOf(c[1]);
+      var cell=document.createElement('div'); cell.className='hm-cell';
+      var dir = (pr>=0&&cr>=0) ? (cr>pr?1:(cr<pr?-1:0)) : 0;
+      var bg = NEUTRAL, ink='var(--on-surface-variant)';
+      if(v>0){
+        var t = Math.log(v+1)/lmax;
+        if(dir>0){      bg = RISK[Math.min(RISK.length-1, Math.floor(t*RISK.length))]; ink=inkOn(bg); }
+        else if(dir<0){ bg = IMP[Math.min(IMP.length-1, Math.floor(t*IMP.length))];   ink=inkOn(bg); }
+        else{ var s=Math.floor(t*4); bg=['#efedf7','#e4e0ef','#d8d3e8','#cbc5e0','#bdb6d8'][Math.min(4,s)]; }
+      }
+      cell.style.background = bg; cell.style.color = ink;
+      cell.textContent = v ? (v>=10000 ? (v/1000).toFixed(0)+'k' : fmt(v)) : '·';
+      if(v===0){ cell.style.opacity='.45'; cell.style.cursor='default'; }
+      if(F.trans && F.trans[0]===p[0] && F.trans[1]===c[0]) cell.className+=' on';
+      cell.tabIndex = v? 0 : -1;
+      bindTip(cell, function(){
+        return '<b>'+esc(p[1])+' → '+esc(c[1])+'</b><hr>'+ tipRow('시설 수', fmt(v)) +
+          (dir>0 ? '<div style="margin-top:5px;color:#f3a99a">▼ 등급 하락</div>' :
+           dir<0 ? '<div style="margin-top:5px;color:#8fd8bb">▲ 등급 개선</div>' :
+                   '<div style="margin-top:5px;opacity:.65">등급 유지</div>');
+      });
+      if(v) cell.onclick=function(){
+        F.trans = (F.trans && F.trans[0]===p[0] && F.trans[1]===c[0]) ? null : [p[0],c[0]];
+        watchPage=1; refresh();
+      };
+      grid.appendChild(cell);
+    });
+  });
+  host.appendChild(grid);
+
+  var mv = document.createElement('div');
+  mv.style.cssText='display:flex;gap:10px;margin-top:16px;flex-wrap:wrap';
+  [['하락',R.dropped,'var(--g-d)'],['개선',R.improved,'var(--g-a)'],
+   ['유지',R.total-R.dropped-R.improved,'var(--outline)']].forEach(function(m){
+    mv.innerHTML += '<div style="flex:1 1 84px;padding:10px 12px;border-radius:12px;'+
+      'background:rgba(255,255,255,.6);border:1px solid rgba(255,255,255,.9)">'+
+      '<div style="font-family:var(--font-label);font-size:10px;font-weight:600;letter-spacing:.05em;'+
+      'text-transform:uppercase;color:var(--on-surface-variant)">'+m[0]+'</div>'+
+      '<div style="font-size:19px;font-weight:800;color:'+m[2]+';font-variant-numeric:tabular-nums">'+fmt(m[1])+'</div></div>';
+  });
+  host.appendChild(mv);
+
+  $('transLegend').innerHTML =
+    '<span class="ramp">등급 하락 <span class="steps">'+RISK.map(function(c){
+      return '<i style="background:'+c+'"></i>'; }).join('')+'</span> 많음</span>'+
+    '<span class="ramp">개선 <span class="steps">'+IMP.map(function(c){
+      return '<i style="background:'+c+'"></i>'; }).join('')+'</span></span>'+
+    '<span class="it"><i class="sw" style="background:#cbc5e0"></i>유지(중립)</span>';
+}
+
+/* ══════════════════════════════════════════════════════════════
+   10. 렌더 — ⑤ 시설유형 리스크
+   ══════════════════════════════════════════════════════════════ */
+var SUMMER = {'용지시설(절토사면)':1,'용지시설(옹벽)':1,'용지시설(육교)':1};
+function renderFtype(R){
+  var B = R.dim.ftype, list=[];
+  DICT.ftype.forEach(function(lab,i){ if(B.n[i]>0) list.push(i); });
+  /* 위험도 높은 순. 단 표본 50건 미만은 비율이 튀므로 뒤로 보낸다 */
+  list.sort(function(a,b){
+    var sa = B.n[a] < 50 ? 1 : 0, sb = B.n[b] < 50 ? 1 : 0;
+    if(sa !== sb) return sa - sb;
+    return (B.cde[b]/B.n[b])-(B.cde[a]/B.n[a]);
+  });
+
+  var host = $('ftypeChart'); host.innerHTML='';
+  if(!list.length){ host.innerHTML='<div class="empty">데이터 없음</div>'; $('ftypeNote').textContent=''; return; }
+  var avg = R.total ? R.cde/R.total*100 : 0;
+
+  var MIN_SAMPLE = 50;   // 이하는 비율이 불안정하므로 경고 강조 대상에서 제외
+  list.forEach(function(i){
+    var lab=DICT.ftype[i], n=B.n[i], cde=B.cde[i], ji=B.ji[i], p=cde/n*100;
+    var g=B.g.subarray(i*6,i*6+6);
+    var small = n < MIN_SAMPLE;
+    var hot = SUMMER[lab] && p > avg && !small;
+    var card = document.createElement('div');
+    card.className='risk-card'+(hot?' alert':'')+(F.dim.ftype===i?' on':'');
+    card.tabIndex=0;
+    var step = RISK[Math.min(5, rampStep(p,[2,5,10,15,20]))];
+    var tag = hot
+      ? '<span class="tag" style="background:rgba(224,56,79,.14);color:#a02620">호우 대비 우선점검</span>'
+      : small
+        ? '<span class="tag" style="background:rgba(118,117,134,.16);color:var(--on-surface-variant)">표본 '+fmt(n)+'건 · 해석 주의</span>'
+        : SUMMER[lab]
+          ? '<span class="tag" style="background:rgba(70,72,212,.1);color:var(--on-primary-fixed-variant)">우기 취약 시설</span>'
+          : '';
+    card.innerHTML =
+      '<div class="rt"><span class="rname">'+esc(lab)+'</span>'+
+      '<span class="rpct" style="color:'+(small?'var(--outline)':step)+'">'+p.toFixed(2)+'%</span></div>'+
+      '<div class="rmeta">'+fmt(n)+'개 시설 · C이하 '+fmt(cde)+'개 · 지적 '+fmt(ji)+'건</div>'+
+      '<div class="rbar"></div>'+tag;
+    card.querySelector('.rbar').appendChild(stackEl(g,n));
+    bindTip(card, function(){
+      return '<b>'+esc(lab)+'</b><hr>'+tipRow('점검 시설',fmt(n))+
+        tipRow('C등급 이하', fmt(cde)+' ('+p.toFixed(2)+'%)')+
+        tipRow('지적사항', fmt(ji)+'건')+'<hr>'+gradeTip(g,n)+
+        '<hr><div style="opacity:.7;font-size:11px">현재 범위 평균 '+avg.toFixed(2)+'%'+
+        (small?'<br>표본이 '+fmt(n)+'건이라 비율 변동이 큽니다.':'')+'</div>';
+    });
+    card.onclick=function(){ F.dim.ftype = (F.dim.ftype===i?null:i); refresh(); };
+    card.onkeydown=function(e){ if(e.key==='Enter'||e.key===' '){e.preventDefault();card.onclick();} };
+    host.appendChild(card);
+  });
+
+  $('ftypeLegend').innerHTML = gradeLegendHtml();
+
+  var slope = list.filter(function(i){ return DICT.ftype[i]==='용지시설(절토사면)'; })[0];
+  $('ftypeNote').textContent = (slope!==undefined && B.n[slope]>0)
+    ? '절토사면의 C등급 이하 비율은 '+ (B.cde[slope]/B.n[slope]*100).toFixed(2) +'%로 현재 범위 평균('+
+      avg.toFixed(2)+'%)을 웃돕니다. 집중호우 시 토사유출·붕괴 위험이 있어 장마 전 재점검 대상으로 우선 검토가 필요합니다.'
+    : '현재 범위에는 절토사면 점검 실적이 없습니다.';
+}
+
+/* ══════════════════════════════════════════════════════════════
+   11. 렌더 — ⑥ 학교급 × 설립구분
+   ══════════════════════════════════════════════════════════════ */
+var crossMetric='cde';
+var CROSS_BREAKS=[2,5,10,15,20];
+function renderCross(R){
+  renderSeg('crossMetric',[['cde','C이하율'],['ji','지적률']],crossMetric,
+    function(v){ crossMetric=v; refresh(); });
+
+  var nE = DICT.estab.length;
+  var levels=[], estabs=[];
+  DICT.level.forEach(function(l,i){
+    var s=0; for(var e=0;e<nE;e++) s+=R.cross.n[i*nE+e];
+    if(s>0) levels.push([i,l,s]);
+  });
+  levels.sort(function(a,b){ return b[2]-a[2]; });
+  DICT.estab.forEach(function(l,i){
+    var s=0; for(var k=0;k<DICT.level.length;k++) s+=R.cross.n[k*nE+i];
+    if(s>0) estabs.push([i,l]);
+  });
+
+  var host=$('crossChart'); host.innerHTML='';
+  if(!levels.length||!estabs.length){ host.innerHTML='<div class="empty">데이터 없음</div>'; return; }
+
+  var grid=document.createElement('div'); grid.className='hm';
+  grid.style.gridTemplateColumns='minmax(78px,auto) repeat('+(estabs.length+1)+',minmax(0,1fr))';
+  var corner=document.createElement('div'); corner.className='hm-corner';
+  corner.innerHTML='유형 ↓<br>설립 →'; grid.appendChild(corner);
+  estabs.forEach(function(e){ var t=document.createElement('div'); t.className='hm-top';
+    t.textContent=e[1]; grid.appendChild(t); });
+  var tt=document.createElement('div'); tt.className='hm-top'; tt.textContent='소계'; grid.appendChild(tt);
+
+  levels.forEach(function(L){
+    var lbl=document.createElement('div'); lbl.className='hm-lbl'; lbl.textContent=L[1]; grid.appendChild(lbl);
+    var rowN=0,rowCde=0,rowJi=0,rowG=new Float64Array(6);
+    estabs.forEach(function(E){
+      var c=L[0]*nE+E[0], n=R.cross.n[c], cde=R.cross.cde[c], ji=R.cross.ji[c];
+      rowN+=n; rowCde+=cde; rowJi+=ji;
+      for(var q=0;q<6;q++) rowG[q]+=R.cross.g[c*6+q];
+      var cell=document.createElement('div'); cell.className='hm-cell';
+      if(!n){ cell.style.background=NEUTRAL; cell.style.opacity='.4'; cell.textContent='·';
+              cell.style.cursor='default'; grid.appendChild(cell); return; }
+      var v = crossMetric==='cde' ? cde/n*100 : ji/n*100;
+      var bg = RISK[Math.min(5, rampStep(v,CROSS_BREAKS))];
+      cell.style.background=bg; cell.style.color=inkOn(bg);
+      cell.textContent=fmt(n);
+      cell.tabIndex=0;
+      if(F.cross && F.cross[0]===L[0] && F.cross[1]===E[0]) cell.className+=' on';
+      bindTip(cell, function(){
+        return '<b>'+esc(L[1])+' · '+esc(E[1])+'</b><hr>'+tipRow('점검 시설',fmt(n))+
+          tipRow('C등급 이하', fmt(cde)+' ('+pctS(cde,n,2)+')')+
+          tipRow('지적사항', fmt(ji)+'건 ('+pctS(ji,n,2)+')')+'<hr>'+gradeTip(R.cross.g.subarray(c*6,c*6+6),n);
+      });
+      cell.onclick=function(){
+        F.cross = (F.cross && F.cross[0]===L[0] && F.cross[1]===E[0]) ? null : [L[0],E[0]];
+        watchPage=1; refresh();
+      };
+      grid.appendChild(cell);
+    });
+    var sub=document.createElement('div'); sub.className='hm-cell';
+    sub.style.background='rgba(70,72,212,.07)'; sub.style.color='var(--on-surface)';
+    sub.style.cursor='default';
+    sub.textContent = crossMetric==='cde' ? pctS(rowCde,rowN,1) : pctS(rowJi,rowN,2);
+    sub.tabIndex=0;
+    bindTip(sub, function(){
+      return '<b>'+esc(L[1])+' 전체</b><hr>'+tipRow('점검 시설',fmt(rowN))+
+        tipRow('C등급 이하', fmt(rowCde)+' ('+pctS(rowCde,rowN,2)+')')+
+        tipRow('지적사항', fmt(rowJi)+'건')+'<hr>'+gradeTip(rowG,rowN);
+    });
+    grid.appendChild(sub);
+  });
+  host.appendChild(grid);
+
+  var lab = crossMetric==='cde' ? 'C등급 이하 비율' : '지적률';
+  $('crossLegend').innerHTML =
+    '<span class="ramp">'+lab+' 낮음 <span class="steps">'+RISK.map(function(c){
+      return '<i style="background:'+c+'"></i>'; }).join('')+'</span> 높음</span>'+
+    '<span class="it" style="opacity:.8">칸 안 숫자 = 점검 건수 · 소계 열 = '+lab+'</span>';
+}
+
+/* ══════════════════════════════════════════════════════════════
+   12. 렌더 — ⑦ 시설주용도
+   ══════════════════════════════════════════════════════════════ */
+var fuseMetric='cde';
+function renderFuse(R){
+  renderSeg('fuseMetric',[['cde','C이하율'],['ji','지적률'],['n','건수']],fuseMetric,
+    function(v){ fuseMetric=v; refresh(); });
+
+  var B=R.dim.fuse, list=[], MISS = idxOf('fuse','(미기재)');
+  /* '(미기재)'는 위험도 순위가 아니라 정합성 패널에서 다룬다.
+     단, 사용자가 직접 그 값으로 필터한 경우에는 남겨 둔다. */
+  DICT.fuse.forEach(function(l,i){
+    if(B.n[i]>=1 && (i!==MISS || F.dim.fuse===MISS)) list.push(i);
+  });
+  var MIN = 30;
+  var eligible = list.filter(function(i){ return B.n[i]>=MIN; });
+  if(eligible.length < 5) eligible = list;
+  eligible.sort(function(a,b){
+    if(fuseMetric==='n') return B.n[b]-B.n[a];
+    if(fuseMetric==='ji') return (B.ji[b]/B.n[b])-(B.ji[a]/B.n[a]);
+    return (B.cde[b]/B.n[b])-(B.cde[a]/B.n[a]);
+  });
+  var top = eligible.slice(0,20);
+
+  var host=$('fuseChart'); host.innerHTML='';
+  if(!top.length){ host.innerHTML='<div class="empty">데이터 없음</div>'; return; }
+
+  var GRID='grid-template-columns:minmax(84px,1.15fr) minmax(70px,2fr) 56px 54px';
+  var head=document.createElement('div'); head.className='row-h'; head.style.cssText=GRID;
+  var mlab = fuseMetric==='cde'?'C이하율':(fuseMetric==='ji'?'지적률':'건수');
+  head.innerHTML='<div>시설주용도</div><div>'+mlab+'</div>'+
+    '<div style="text-align:right">건수</div><div style="text-align:right">'+mlab+'</div>';
+  host.appendChild(head);
+
+  var vals = top.map(function(i){
+    return fuseMetric==='n' ? B.n[i] : (fuseMetric==='ji' ? B.ji[i]/B.n[i]*100 : B.cde[i]/B.n[i]*100);
+  });
+  var max = Math.max.apply(null, vals) || 1;
+  var avg = fuseMetric==='n' ? 0 :
+            (fuseMetric==='ji' ? (R.total?R.ji/R.total*100:0) : (R.total?R.cde/R.total*100:0));
+
+  var wrap=document.createElement('div'); wrap.className='rows'; host.appendChild(wrap);
+  top.forEach(function(i,k){
+    var n=B.n[i], cde=B.cde[i], ji=B.ji[i], v=vals[k];
+    var r=document.createElement('div'); r.className='row'+(F.dim.fuse===i?' on':'');
+    r.style.cssText=GRID; r.tabIndex=0;
+    var nm=document.createElement('div'); nm.className='row-name'; nm.textContent=DICT.fuse[i];
+    var color = fuseMetric==='n' ? SEQ[3] : RISK[Math.min(5, rampStep(v,CROSS_BREAKS))];
+    var bw = barEl(v, max, color, fuseMetric==='n'?undefined:avg);
+    var c1=document.createElement('div'); c1.className='num'; c1.textContent=fmt(n);
+    var c2=document.createElement('div'); c2.className='num strong';
+    c2.textContent = fuseMetric==='n' ? fmt(n) : v.toFixed(fuseMetric==='ji'?2:1)+'%';
+    r.appendChild(nm); r.appendChild(bw); r.appendChild(c1); r.appendChild(c2);
+    bindTip(r, function(){
+      return '<b>'+esc(DICT.fuse[i])+'</b><hr>'+tipRow('점검 시설',fmt(n))+
+        tipRow('C등급 이하', fmt(cde)+' ('+pctS(cde,n,2)+')')+
+        tipRow('지적사항', fmt(ji)+'건 ('+pctS(ji,n,2)+')')+'<hr>'+
+        gradeTip(B.g.subarray(i*6,i*6+6),n)+
+        (fuseMetric==='n'?'':'<hr><div style="opacity:.7;font-size:11px">세로선 = 현재 범위 평균 '+avg.toFixed(2)+'%</div>');
+    });
+    r.onclick=function(){ F.dim.fuse=(F.dim.fuse===i?null:i); refresh(); };
+    r.onkeydown=function(e){ if(e.key==='Enter'||e.key===' '){e.preventDefault();r.onclick();} };
+    wrap.appendChild(r);
+  });
+  if(eligible.length > 20){
+    var note=document.createElement('p'); note.className='note';
+    note.textContent='점검 30건 이상인 용도 '+fmt(eligible.length)+'종 중 상위 20종입니다.'+
+      (fuseMetric==='n'?'':' 세로선은 현재 범위 평균입니다.');
+    host.appendChild(note);
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════
+   13. 렌더 — ⑧ 경과연수
+   ══════════════════════════════════════════════════════════════ */
+function renderAge(R){
+  var host=$('ageChart'); host.innerHTML='';
+  var B=R.age, any=false;
+  for(var i=0;i<7;i++) if(B.n[i]>0) any=true;
+  if(!any){ host.innerHTML='<div class="empty">데이터 없음</div>'; $('ageLegend').innerHTML=''; return; }
+
+  var GRID='grid-template-columns:minmax(64px,.85fr) minmax(90px,2.4fr) 58px 58px';
+  var head=document.createElement('div'); head.className='row-h'; head.style.cssText=GRID;
+  head.innerHTML='<div>경과연수</div><div>금차등급 구성</div>'+
+    '<div style="text-align:right">건수</div><div style="text-align:right">C이하</div>';
+  host.appendChild(head);
+
+  var wrap=document.createElement('div'); wrap.className='rows'; host.appendChild(wrap);
+  for(var a=0;a<7;a++){
+    (function(a){
+      var n=B.n[a]; if(!n) return;
+      var cde=B.cde[a], ji=B.ji[a], g=B.g.subarray(a*6,a*6+6);
+      var r=document.createElement('div'); r.className='row'+(F.age===a?' on':'');
+      r.style.cssText=GRID; r.tabIndex=0;
+      var nm=document.createElement('div'); nm.className='row-name'; nm.textContent=AGE_LABELS[a];
+      var c1=document.createElement('div'); c1.className='num'; c1.textContent=fmt(n);
+      var c2=document.createElement('div'); c2.className='num strong'; c2.textContent=pctS(cde,n,1);
+      c2.style.color = RISK[Math.min(5, rampStep(cde/n*100, CROSS_BREAKS))];
+      r.appendChild(nm); r.appendChild(stackEl(g,n)); r.appendChild(c1); r.appendChild(c2);
+      bindTip(r, function(){
+        return '<b>'+AGE_LABELS[a]+'</b><hr>'+tipRow('점검 시설',fmt(n))+
+          tipRow('C등급 이하', fmt(cde)+' ('+pctS(cde,n,2)+')')+
+          tipRow('지적사항', fmt(ji)+'건')+'<hr>'+gradeTip(g,n);
+      });
+      r.onclick=function(){ F.age=(F.age===a?null:a); refresh(); };
+      r.onkeydown=function(e){ if(e.key==='Enter'||e.key===' '){e.preventDefault();r.onclick();} };
+      wrap.appendChild(r);
+    })(a);
+  }
+  var oldRate = B.n[5] ? B.cde[5]/B.n[5]*100 : 0;
+  var midRate = B.n[2] ? B.cde[2]/B.n[2]*100 : 0;
+  var note=document.createElement('p'); note.className='note';
+  note.textContent = (B.n[5] && B.n[2] && midRate>0)
+    ? '40년 이상 시설의 C등급 이하 비율은 '+oldRate.toFixed(2)+'%로 10~19년('+midRate.toFixed(2)+'%)의 '+
+      (oldRate/midRate).toFixed(1)+'배입니다.'
+    : '사용승인연도 기준 경과연수이며, 연도 미기재 시설은 별도 구간으로 표시합니다.';
+  host.appendChild(note);
+  $('ageLegend').innerHTML = gradeLegendHtml();
+}
+
+/* ══════════════════════════════════════════════════════════════
+   14. 렌더 — ⑨ 점검 품질 · 정합성
+   ══════════════════════════════════════════════════════════════ */
+function renderMethod(R){
+  var B=R.dim.method, list=[];
+  DICT.method.forEach(function(l,i){ if(B.n[i]>0) list.push(i); });
+  list.sort(function(a,b){ return (B.ji[b]/B.n[b])-(B.ji[a]/B.n[a]); });
+
+  var host=$('methodChart'); host.innerHTML='';
+  if(!list.length){ host.innerHTML='<div style="opacity:.6;font-size:12px">데이터 없음</div>';
+                    $('methodNote').textContent=''; return; }
+  var max = Math.max.apply(null, list.map(function(i){ return B.ji[i]/B.n[i]*100; })) || 1;
+
+  list.forEach(function(i){
+    var n=B.n[i], ji=B.ji[i], cde=B.cde[i], v=ji/n*100;
+    var row=document.createElement('div'); row.className='mrow'; row.tabIndex=0;
+    row.style.cursor='pointer';
+    var bg = RISK[Math.min(5, rampStep(v,[1,3,6,10,15]))];
+    row.innerHTML = '<div class="mn">'+esc(DICT.method[i])+'</div>'+
+      '<div class="mbar"><i style="width:'+Math.max(v/max*100,1.5)+'%;background:'+bg+'"></i></div>'+
+      '<div class="mv">'+v.toFixed(2)+'%</div>';
+    bindTip(row, function(){
+      return '<b>'+esc(DICT.method[i])+'</b><hr>'+tipRow('점검 시설',fmt(n))+
+        tipRow('지적사항', fmt(ji)+'건')+tipRow('지적률', v.toFixed(2)+'%')+
+        tipRow('C등급 이하', fmt(cde)+' ('+pctS(cde,n,2)+')')+
+        '<hr>'+tipRow('전체 대비 비중', pctS(n,R.total,1));
+    });
+    row.onclick=function(){ F.dim.method=(F.dim.method===i?null:i); refresh(); };
+    row.onkeydown=function(e){ if(e.key==='Enter'||e.key===' '){e.preventDefault();row.onclick();} };
+    if(F.dim.method===i) row.style.background='rgba(255,255,255,.12)', row.style.borderRadius='8px';
+    host.appendChild(row);
+  });
+
+  var self = idxOf('method','자체점검');
+  var selfShare = (self>=0 && R.total) ? B.n[self]/R.total*100 : 0;
+  var selfRate  = (self>=0 && B.n[self]) ? B.ji[self]/B.n[self]*100 : 0;
+  var hi = list[0], hiRate = B.n[hi] ? B.ji[hi]/B.n[hi]*100 : 0;
+  $('methodNote').textContent = (self>=0 && B.n[self] && selfRate>0)
+    ? '전체 점검의 '+selfShare.toFixed(1)+'%를 차지하는 자체점검의 지적률은 '+selfRate.toFixed(2)+
+      '%로, '+DICT.method[hi]+'('+hiRate.toFixed(2)+'%)의 '+(hiRate/selfRate).toFixed(1)+
+      '분의 1 수준입니다. 실제 시설 상태 차이인지 점검 강도 차이인지 표본 재점검으로 확인할 필요가 있습니다.'
+    : '점검방법에 따라 지적률이 크게 달라집니다. 동일 시설군을 서로 다른 방법으로 교차 점검해 보정 계수를 확인해 보세요.';
+}
+
+function renderQuality(R){
+  var items = [
+    {f:F_FUSE,     n:R.flags[0], t:'시설주용도 미기재', d:'용도 기반 위험도 분석에서 누락됩니다', i:'▤', c:'224,164,22'},
+    {f:F_YEAR,     n:R.flags[1], t:'사용승인연도 미기재', d:'노후도 산정 불가', i:'◷', c:'224,164,22'},
+    {f:F_YEAR_ODD, n:R.flags[2], t:'사용승인연도 이상치', d:'점검연도 초과 또는 1930년 이전', i:'!', c:'224,56,79'},
+    {f:F_CONFLICT, n:R.flags[6], t:'등급·지적 불일치', d:'A·B등급인데 지적 3건 이상', i:'⚖', c:'224,56,79'},
+    {f:F_STATUS,   n:R.flags[3], t:'폐교·휴교·불용 시설 점검', d:'대상 목록 정비 필요', i:'⊘', c:'118,117,134'},
+    {f:F_UNDONE,   n:R.flags[4], t:'점검 미완료', d:'결과 미제출 또는 확인 대기', i:'…', c:'224,56,79'},
+    {f:F_GRADE,    n:R.flags[5], t:'금차안전등급 누락', d:'등급 판정 결과 미입력', i:'∅', c:'224,56,79'}
+  ];
+  var host=$('qualityList'); host.innerHTML='';
+  items.forEach(function(it){
+    var el=document.createElement('div');
+    el.className='warn'+(F.flag===it.f?' on':'');
+    el.tabIndex=0;
+    if(!it.n){ el.style.opacity='.42'; el.style.cursor='default'; }
+    el.innerHTML =
+      '<div class="wi" style="background:rgba('+it.c+',.22);color:rgb('+it.c+')">'+it.i+'</div>'+
+      '<div class="wt"><b>'+esc(it.t)+'</b><span>'+esc(it.d)+'</span></div>'+
+      '<div class="wc">'+fmt(it.n)+(it.n? ' <span style="font-size:10px;font-weight:600;opacity:.6">'+
+        pctS(it.n,R.total,1)+'</span>':'')+'</div>';
+    if(it.n){
+      el.onclick=function(){ F.flag=(F.flag===it.f?null:it.f); watchPage=1; refresh(); };
+      el.onkeydown=function(e){ if(e.key==='Enter'||e.key===' '){e.preventDefault();el.onclick();} };
+      bindTip(el, function(){
+        return '<b>'+esc(it.t)+'</b><hr>'+tipRow('해당 레코드', fmt(it.n)+'건')+
+          tipRow('현재 범위 대비', pctS(it.n,R.total,2))+
+          '<hr><div style="opacity:.7;font-size:11px">클릭하면 해당 레코드만 필터링됩니다</div>';
+      });
+    }
+    host.appendChild(el);
+  });
+}
+
+/* ══════════════════════════════════════════════════════════════
+   15. 렌더 — ⑩ 워치리스트
+   ══════════════════════════════════════════════════════════════ */
+/* watch 행: 0~11 표시용, 12~14 필터 연동용
+   [sido, office, school, fac, fuse, ftype, year, prev, cur, ji, reason, period, estab, level, method] */
+var W_SIDO=0,W_OFFICE=1,W_SCHOOL=2,W_FAC=3,W_FUSE=4,W_FTYPE=5,W_YEAR=6,W_PREV=7,W_CUR=8,W_JI=9,W_RSN=10,W_PERIOD=11,
+    W_ESTAB=12,W_LEVEL=13,W_METHOD=14,W_OPSTAT=15,W_FSTAT=16,W_DONE=17;
+
+/* 정합성 필터를 워치리스트에도 적용한다. 판정은 FLAG 계산과 동일한 규칙을
+   행에 실려 온 원본 값으로 다시 적용하는 것이므로 결과가 어긋나지 않는다. */
+function watchHasFlag(r, flag){
+  var y = parseInt(r[W_YEAR],10) || 0;
+  switch(flag){
+    case F_FUSE:     return (r[W_FUSE]||'(미기재)')==='(미기재)';
+    case F_YEAR:     return !y;
+    case F_YEAR_ODD: return y > BASE_YEAR || (y>0 && y < 1930);
+    case F_GRADE:    return r[W_CUR]==='-';
+    case F_CONFLICT: return (r[W_CUR]==='A등급'||r[W_CUR]==='B등급') && r[W_JI]>=3;
+    case F_DROP:     return r[W_RSN].indexOf('등급하락')>=0;
+    case F_STATUS:   return r[W_OPSTAT]==='폐교(폐원)' || r[W_OPSTAT]==='휴교(휴원)' ||
+                            r[W_FSTAT]==='불용' || r[W_FSTAT]==='철거' || r[W_FSTAT]==='제외';
+    case F_UNDONE:   return r[W_DONE]==='N';
+    default:         return true;
+  }
+}
+var WATCH_COLS = [
+  {t:'시도교육청', k:W_SIDO,  w:'150px'},
+  {t:'교육지원청', k:W_OFFICE,w:'160px'},
+  {t:'학교·기관명', k:W_SCHOOL,w:'170px'},
+  {t:'시설명',     k:W_FAC,   w:'180px'},
+  {t:'주용도',     k:W_FUSE,  w:'110px'},
+  {t:'승인연도',   k:W_YEAR,  w:'74px',  num:true},
+  {t:'전차 → 금차', k:W_CUR,  w:'132px'},
+  {t:'지적',       k:W_JI,    w:'56px',  num:true},
+  {t:'사유',       k:W_RSN,   w:'130px'}
+];
+var GRANK={'A등급':1,'B등급':2,'C등급':3,'D등급':4,'E등급':5};
+var watchPage=1, watchSort={k:W_CUR,dir:-1}, watchQuery='', watchMode='all', PAGE=20;
+
+function watchRows(){
+  var out=[];
+  var dimSel={};
+  FILTER_DEFS.forEach(function(d){ if(F.dim[d.key]!==null) dimSel[d.key]=DICT[d.key][F.dim[d.key]]; });
+  var ageSel = F.age;
+  var q = watchQuery.trim().toLowerCase();
+
+  for(var i=0;i<D.watch.length;i++){
+    var r=D.watch[i];
+    if(dimSel.sido   && r[W_SIDO]!==dimSel.sido) continue;
+    if(dimSel.office && r[W_OFFICE]!==dimSel.office) continue;
+    if(dimSel.ftype  && r[W_FTYPE]!==dimSel.ftype) continue;
+    if(dimSel.fuse   && (r[W_FUSE]||'(미기재)')!==dimSel.fuse) continue;
+    if(dimSel.cur    && r[W_CUR]!==dimSel.cur) continue;
+    if(dimSel.estab  && r[W_ESTAB]!==dimSel.estab) continue;
+    if(dimSel.level  && r[W_LEVEL]!==dimSel.level) continue;
+    if(dimSel.method && r[W_METHOD]!==dimSel.method) continue;
+    if(F.cross && (r[W_LEVEL]!==DICT.level[F.cross[0]] ||
+                   r[W_ESTAB]!==DICT.estab[F.cross[1]])) continue;
+    if(F.trans && (r[W_PREV]!==DICT.prev[F.trans[0]] || r[W_CUR]!==DICT.cur[F.trans[1]])) continue;
+    if(ageSel!==null){
+      var y=parseInt(r[W_YEAR],10), b;
+      if(!y){ b=6; } else { var a=BASE_YEAR-y; b=a<5?0:a<10?1:a<20?2:a<30?3:a<40?4:5; }
+      if(b!==ageSel) continue;
+    }
+    if(F.flag !== null && !watchHasFlag(r, F.flag)) continue;
+    if(watchMode==='de'   && GRANK[r[W_CUR]]<4) continue;
+    if(watchMode==='drop' && r[W_RSN].indexOf('등급하락')<0) continue;
+    if(watchMode==='many' && r[W_JI]<5) continue;
+    if(q && (r[W_SCHOOL]+' '+r[W_FAC]+' '+r[W_SIDO]+' '+r[W_OFFICE]).toLowerCase().indexOf(q)<0) continue;
+    out.push(r);
+  }
+  var k=watchSort.k, dir=watchSort.dir;
+  out.sort(function(a,b){
+    var x,y;
+    if(k===W_CUR){ x=(GRANK[a[W_CUR]]||0)*100+a[W_JI]; y=(GRANK[b[W_CUR]]||0)*100+b[W_JI]; }
+    else if(k===W_JI){ x=a[W_JI]; y=b[W_JI]; }
+    else if(k===W_YEAR){ x=parseInt(a[W_YEAR],10)||9999; y=parseInt(b[W_YEAR],10)||9999; }
+    else { x=a[k]; y=b[k]; return dir * String(x).localeCompare(String(y),'ko'); }
+    return dir*(x-y);
+  });
+  return out;
+}
+
+function gradeChip(g){
+  var c = GCOLOR[g] || GX;
+  return '<span class="gr"><i style="background:'+c+'"></i>'+esc(g)+'</span>';
+}
+function reasonChip(r){
+  var map={'D·E등급':['224,56,79'],'등급하락':['176,116,0'],'지적다발':['70,72,212']};
+  return r.split('|').map(function(p){
+    var c=(map[p]||['118,117,134'])[0];
+    return '<span class="rsn" style="background:rgba('+c+',.14);color:rgb('+c+')">'+esc(p)+'</span>';
+  }).join(' ');
+}
+
+function renderWatch(){
+  renderSeg('watchFilter',[['all','전체'],['de','D·E등급'],['drop','등급 하락'],['many','지적 5건+']],
+    watchMode, function(v){ watchMode=v; watchPage=1; renderWatch(); });
+
+  var rows = watchRows();
+  var pages = Math.max(1, Math.ceil(rows.length/PAGE));
+  if(watchPage>pages) watchPage=pages;
+  var slice = rows.slice((watchPage-1)*PAGE, watchPage*PAGE);
+
+  $('watchHead').innerHTML = WATCH_COLS.map(function(c){
+    var on = watchSort.k===c.k;
+    return '<th data-k="'+c.k+'" style="width:'+c.w+'"'+(on?' class="sorted"':'')+'>'+
+      esc(c.t)+(on ? (watchSort.dir<0?' ▾':' ▴') : '')+'</th>';
+  }).join('');
+  Array.prototype.forEach.call($('watchHead').children, function(th){
+    th.onclick=function(){
+      var k=+th.getAttribute('data-k');
+      if(watchSort.k===k) watchSort.dir*=-1; else { watchSort.k=k; watchSort.dir=(k===W_CUR||k===W_JI)?-1:1; }
+      watchPage=1; renderWatch();
+    };
+  });
+
+  if(!slice.length){
+    $('watchBody').innerHTML='<tr><td colspan="'+WATCH_COLS.length+'" class="empty">'+
+      '조건에 해당하는 즉시조치 대상이 없습니다.</td></tr>';
+  } else {
+    $('watchBody').innerHTML = slice.map(function(r){
+      return '<tr>'+
+        '<td>'+esc(r[W_SIDO])+'</td>'+
+        '<td style="color:var(--on-surface-variant)">'+esc(r[W_OFFICE])+'</td>'+
+        '<td style="font-weight:700">'+esc(r[W_SCHOOL])+'</td>'+
+        '<td>'+esc(r[W_FAC])+'</td>'+
+        '<td style="color:var(--on-surface-variant)">'+esc(r[W_FUSE]||'(미기재)')+'</td>'+
+        '<td class="n">'+esc(r[W_YEAR]||'—')+'</td>'+
+        '<td>'+gradeChip(r[W_PREV])+'<span class="arrow">→</span>'+gradeChip(r[W_CUR])+'</td>'+
+        '<td class="n" style="font-weight:800'+(r[W_JI]>=5?';color:var(--risk-5)':'')+'">'+r[W_JI]+'</td>'+
+        '<td>'+reasonChip(r[W_RSN])+'</td></tr>';
+    }).join('');
+  }
+
+  $('watchInfo').textContent = rows.length
+    ? fmt(rows.length)+'건 중 '+fmt((watchPage-1)*PAGE+1)+'–'+fmt(Math.min(watchPage*PAGE,rows.length))+'건 표시'
+    : '표시할 항목이 없습니다.';
+
+  var pg=$('watchPager'); pg.innerHTML='';
+  function pbtn(label, page, dis, on){
+    var b=document.createElement('button'); b.textContent=label; b.disabled=!!dis;
+    if(on) b.className='on';
+    if(!dis) b.onclick=function(){ watchPage=page; renderWatch(); };
+    pg.appendChild(b);
+  }
+  if(pages>1){
+    pbtn('‹', watchPage-1, watchPage<=1);
+    var start=Math.max(1,Math.min(watchPage-2,pages-4)), end=Math.min(pages,start+4);
+    for(var p=start;p<=end;p++) pbtn(String(p), p, false, p===watchPage);
+    pbtn('›', watchPage+1, watchPage>=pages);
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════
+   16. CSV
+   ══════════════════════════════════════════════════════════════ */
+function csvCell(v){
+  var s=String(v==null?'':v);
+  return /[",\n]/.test(s) ? '"'+s.replace(/"/g,'""')+'"' : s;
+}
+function download(name, text){
+  var blob = new Blob(['﻿'+text], {type:'text/csv;charset=utf-8;'});
+  var url = URL.createObjectURL(blob), a=document.createElement('a');
+  a.href=url; a.download=name; document.body.appendChild(a); a.click();
+  document.body.removeChild(a); setTimeout(function(){ URL.revokeObjectURL(url); }, 1500);
+}
+function stamp(){ var d=new Date();
+  return d.getFullYear()+String(d.getMonth()+1).padStart(2,'0')+String(d.getDate()).padStart(2,'0'); }
+
+function exportWatch(){
+  var rows = watchRows();
+  var head = ['시도교육청','교육지원청','학교·기관명','시설명','시설주용도','시설유형',
+              '사용승인연도','전차안전등급','금차안전등급','지적사항수','선정사유','안전점검기간',
+              '설립구분','학교·기관 유형','점검방법','학교운영상태','시설운용상태','점검완료여부'];
+  var body = rows.map(function(r){ return r.map(csvCell).join(','); });
+  download('즉시조치대상_'+scopeName()+'_'+stamp()+'.csv', [head.join(',')].concat(body).join('\r\n'));
+}
+
+function exportSummary(R){
+  var L=[], push=function(a){ L.push(a.map(csvCell).join(',')); };
+  push(['2026년도 여름철 교육시설 안전점검 요약']);
+  push(['적용 범위', scopeName()]);
+  push(['생성일시', new Date().toLocaleString('ko-KR')]);
+  push(['원본', D.meta.source+' / '+D.meta.plan]);
+  push([]);
+  push(['구분','값']);
+  push(['점검 시설 수', R.total]); push(['C등급 이하', R.cde]);
+  push(['C등급 이하 비율(%)', pct(R.cde,R.total,2)]);
+  push(['지적사항 수', R.ji]); push(['등급 하락', R.dropped]); push(['등급 개선', R.improved]);
+  push(['즉시조치 검토 대상', R.watch]); push(['40년 이상 시설', R.old40]);
+  push([]);
+  push(['금차안전등급','건수','비율(%)']);
+  GRADES.forEach(function(g,i){ push([g, R.grades[i], pct(R.grades[i],R.total,2)]); });
+  push(['미기재', R.grades[5], pct(R.grades[5],R.total,2)]);
+
+  [['sido','시도교육청'],['level','학교·기관 유형'],['estab','설립구분'],
+   ['ftype','시설유형'],['fuse','시설주용도'],['method','점검방법']].forEach(function(d){
+    var B=R.dim[d[0]];
+    push([]); push([d[1],'점검 건수','A등급','B등급','C등급','D등급','E등급','미기재',
+                    'C이하','C이하율(%)','지적사항','지적률(%)']);
+    var order=[]; DICT[d[0]].forEach(function(l,i){ if(B.n[i]>0) order.push(i); });
+    order.sort(function(a,b){ return B.n[b]-B.n[a]; });
+    order.forEach(function(i){
+      push([DICT[d[0]][i], B.n[i], B.g[i*6], B.g[i*6+1], B.g[i*6+2], B.g[i*6+3], B.g[i*6+4], B.g[i*6+5],
+            B.cde[i], pct(B.cde[i],B.n[i],2), B.ji[i], pct(B.ji[i],B.n[i],2)]);
+    });
+  });
+
+  push([]); push(['경과연수','점검 건수','C이하','C이하율(%)','지적사항']);
+  for(var a=0;a<7;a++) if(R.age.n[a])
+    push([AGE_LABELS[a], R.age.n[a], R.age.cde[a], pct(R.age.cde[a],R.age.n[a],2), R.age.ji[a]]);
+
+  push([]); push(['등급 전이 (전차 → 금차)','건수']);
+  var Pi=orderedIdx('prev'), Ci=orderedIdx('cur'), nCur=DICT.cur.length;
+  Pi.forEach(function(p){ Ci.forEach(function(c){
+    var v=R.trans[p[0]*nCur+c[0]]; if(v) push([p[1]+' → '+c[1], v]); }); });
+
+  push([]); push(['정합성 점검 항목','건수']);
+  [['시설주용도 미기재',0],['사용승인연도 미기재',1],['사용승인연도 이상치',2],
+   ['폐교·휴교·불용 시설 점검',3],['점검 미완료',4],['금차등급 누락',5],
+   ['등급·지적 불일치',6]].forEach(function(x){ push([x[0], R.flags[x[1]]]); });
+
+  download('안전점검요약_'+scopeName()+'_'+stamp()+'.csv', L.join('\r\n'));
+}
+
+/* ══════════════════════════════════════════════════════════════
+   17. 오케스트레이션
+   ══════════════════════════════════════════════════════════════ */
+var LAST = null, BASE = null;
+function refresh(){
+  var t0 = performance.now();
+  LAST = compute();
+  if(BASE === null) BASE = LAST;            // 최초 1회(무필터) = 전국 기준선
+  computeFilterCounts();
+  renderFilters();
+  renderHero(LAST);
+  renderKpis(LAST);
+  renderSido(LAST);
+  renderTrans(LAST);
+  renderFtype(LAST);
+  renderCross(LAST);
+  renderFuse(LAST);
+  renderAge(LAST);
+  renderMethod(LAST);
+  renderQuality(LAST);
+  watchPage = Math.max(1, watchPage);
+  renderWatch();
+  tipHide();
+  if(window.console && console.debug) console.debug('재집계 '+(performance.now()-t0).toFixed(1)+'ms');
+}
+
+function init(){
+  $('hdSub').textContent = '교육시설통합정보망 · '+D.meta.plan;
+  $('footMeta').textContent =
+    '원본 '+D.meta.source+' · 점검 '+fmt(D.meta.rows)+'건 · 대상 '+fmt(D.meta.schools)+
+    '개 학교·기관 · 연면적 '+fmt(D.meta.areaSum)+'㎡ · 데이터 생성 '+D.meta.builtAt;
+
+  $('btnCsv').onclick   = function(){ exportSummary(LAST); };
+  $('btnCsvWatch').onclick = exportWatch;
+  $('btnPrint').onclick = function(){ window.print(); };
+
+  var si=$('watchSearch'), timer=null;
+  si.oninput = function(){
+    clearTimeout(timer);
+    timer = setTimeout(function(){ watchQuery=si.value; watchPage=1; renderWatch(); }, 180);
+  };
+
+  refresh();
+  $('loading').style.display='none';
+}
+
+try { init(); }
+catch(err){
+  $('loading').innerHTML = '<div style="text-align:center;color:#ba1a1a;max-width:640px">'+
+    '<b>대시보드를 그리는 중 오류가 발생했습니다.</b><br>'+
+    '<span style="font-weight:400;font-size:12px;word-break:break-all">'+esc(err && err.message)+'</span></div>';
+  throw err;
+}
+})();
+</script>
+</body>
+</html>
