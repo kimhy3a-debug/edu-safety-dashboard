@@ -49,10 +49,30 @@ DIMS = [
     ("done", C_DONE),
     ("school", C_SCHOOL), ("fac", C_FAC), ("period", C_PERIOD),
 ]
-# "base"(지하층 보유)는 원본 컬럼을 그대로 옮기는 게 아니라 C_FLOOR 값을 파싱한
-# 파생 차원이라 DIMS 튜플로 표현할 수 없다. dict/cols 인코딩은 DIMS와 동일한
-# 방식을 타야 하므로 아래에서 DIMS에 이어붙여 함께 순회한다.
-ALL_DIMS = DIMS + [("base", None)]
+# "base"(지하층 보유), "areab"(연면적 구간), "stu"(학생주로이용 여부)는 원본 컬럼을
+# 그대로 옮기는 게 아니라 C_FLOOR/C_AREA/C_FUSE 값을 파싱·판정한 파생 차원이라
+# DIMS 튜플로 표현할 수 없다. dict/cols 인코딩은 DIMS와 동일한 방식을 타야 하므로
+# 아래에서 이어붙여 함께 순회한다.
+ALL_DIMS = DIMS + [("base", None), ("areab", None), ("stu", None)]
+AREA_LABELS = ["100㎡ 미만", "100~299㎡", "300~999㎡", "1,000~2,999㎡", "3,000㎡ 이상"]
+
+# 학생이 주로 이용하는 시설(시설주용도 기준) — 교육시설통합정보망 건물검색 상세조건의
+# "교육기본시설/지원시설"(17개 시도교육청·대학 대분류)을 참고해 사용자와 함께 확정한 목록.
+# 초중고·대학 계열은 시설주용도 라벨 자체가 서로 겹치지 않으므로(예: 도서실≠도서관,
+# 강당/체육관≠체육관·강당) 계열 구분 없이 라벨 하나의 집합으로 판정할 수 있다.
+STUDENT_FUSE = {
+    # 17개 시도교육청(초중고 등) — 교육기본/지원시설
+    "교사", "도서실", "실습실/특별교실", "생활관(예절실)", "급식실/식당",
+    "강당/체육관", "기숙사/합숙소",
+    # 대학/전문대학/대학원 — 교육기본시설 + 기숙사·강당(지원시설이지만 포함하기로 확정)
+    "강의실", "실험실습실", "도서관", "체육관", "교수연구실", "행정실",
+    "학생회관", "대학본부", "정보전산원", "산학협력단", "학교기업",
+    "학칙으로 정한 교육기본시설", "강당", "학생기숙사",
+}
+
+
+def classify_stu(fuse_raw):
+    return "학생주로이용" if fuse_raw in STUDENT_FUSE else "기타"
 
 BASE_YEAR = 2026          # 점검 연도 = 경과연수 기준
 GRADE_RANK = {"A등급": 1, "B등급": 2, "C등급": 3, "D등급": 4, "E등급": 5}
@@ -144,6 +164,19 @@ def parse_height10(s):
     return min(65535, max(0, round(v * 10)))
 
 
+def classify_area(area_m2):
+    """연면적(㎡)을 5개 구간으로. 규모×경과연수 교차분석용."""
+    if area_m2 < 100:
+        return AREA_LABELS[0]
+    if area_m2 < 300:
+        return AREA_LABELS[1]
+    if area_m2 < 1000:
+        return AREA_LABELS[2]
+    if area_m2 < 3000:
+        return AREA_LABELS[3]
+    return AREA_LABELS[4]
+
+
 def main():
     src = os.path.abspath(SRC)
     if not os.path.exists(src):
@@ -187,6 +220,19 @@ def main():
             d[base_label] = len(d)
         cols["base"].append(d[base_label])
 
+        area_val = parse_area(vals[C_AREA])
+        area_label = classify_area(area_val)
+        d = dicts["areab"]
+        if area_label not in d:
+            d[area_label] = len(d)
+        cols["areab"].append(d[area_label])
+
+        stu_label = classify_stu(vals[C_FUSE])
+        d = dicts["stu"]
+        if stu_label not in d:
+            d[stu_label] = len(d)
+        cols["stu"].append(d[stu_label])
+
         try:
             ji_v = int(vals[C_JI])
         except ValueError:
@@ -196,7 +242,7 @@ def main():
         height10.append(parse_height10(vals[C_HEIGHT]))
 
         schools.add(vals[C_SCHOOL_CD] or vals[C_SCHOOL])
-        area_sum += parse_area(vals[C_AREA])
+        area_sum += area_val
         plan_names.add(vals[25])
 
         # ---- 즉시조치 워치리스트 ----
@@ -213,7 +259,7 @@ def main():
                 reasons.append("등급하락")
             if many:
                 reasons.append("지적다발")
-            # 0~11 은 표에 그리는 컬럼, 12~20 은 필터 연동 전용
+            # 0~11 은 표에 그리는 컬럼, 12~22 는 필터 연동 전용
             # (대시보드 전역 필터가 이 표에도 그대로 걸리게 하려면 필수 —
             #  FILTER_DEFS에 차원을 추가할 때마다 여기도 함께 늘려야 한다)
             watch.append([
@@ -224,7 +270,7 @@ def main():
                 "|".join(reasons), vals[C_PERIOD],
                 vals[C_ESTAB], vals[C_LEVEL], vals[C_METHOD],
                 vals[C_OPSTAT], vals[C_FSTAT], vals[C_DONE],
-                vals[C_STRUCT] or "(미기재)", vals[C_KIND], base_label,
+                vals[C_STRUCT] or "(미기재)", vals[C_KIND], base_label, area_label, stu_label,
             ])
 
         if n % 20000 == 0:

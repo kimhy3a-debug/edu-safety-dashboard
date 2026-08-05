@@ -129,34 +129,6 @@ button{font-family:inherit;font-size:inherit;cursor:pointer;border:none;backgrou
 .active-chips{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:10px}
 .active-chips:empty{display:none}
 
-/* ---------- 필터바 다중선택(체크박스) 드롭다운 ---------- */
-.fsel-multi{position:relative}
-.fsel-trigger{display:inline-block;font-family:inherit;font-size:12.5px;font-weight:700;
-  color:var(--on-surface-variant);background:rgba(255,255,255,.75);border:1px solid rgba(255,255,255,.9);
-  border-radius:var(--r-full);padding:8px 30px 8px 14px;cursor:pointer;max-width:230px;
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:.15s;position:relative}
-.fsel-trigger:hover{background:#fff;color:var(--primary)}
-.fsel-trigger::after{content:"";position:absolute;right:13px;top:50%;width:6px;height:6px;pointer-events:none;
-  border-right:2px solid var(--outline);border-bottom:2px solid var(--outline);transform:translateY(-70%) rotate(45deg)}
-.fsel-multi.open .fsel-trigger{background:#fff;color:var(--primary);border-color:var(--primary);
-  box-shadow:0 0 0 3px rgba(70,72,212,.18)}
-.fsel-panel{position:absolute;top:calc(100% + 6px);left:0;z-index:80;width:max-content;min-width:220px;max-width:320px;
-  background:#fff;border:1px solid rgba(0,0,0,.08);border-radius:var(--r-md);
-  box-shadow:0 16px 40px -8px rgba(27,27,35,.28);padding:8px;display:flex;flex-direction:column}
-.fsel-all{display:flex;align-items:center;gap:8px;padding:8px;border-radius:var(--r-sm);cursor:pointer;
-  font-size:13px;font-weight:700;color:var(--on-surface);border-bottom:1px solid var(--outline-variant);margin-bottom:4px}
-.fsel-all:hover{background:rgba(70,72,212,.06)}
-.fsel-search{margin:0 0 6px;padding:6px 10px;border-radius:var(--r-full);border:1px solid var(--outline-variant);
-  font-size:12px;font-family:inherit;width:100%}
-.fsel-search:focus{outline:none;border-color:var(--primary)}
-.fsel-list{overflow-y:auto;max-height:280px;display:flex;flex-direction:column;gap:1px}
-.fsel-opt{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:var(--r-sm);cursor:pointer;
-  font-size:12.5px;color:var(--on-surface)}
-.fsel-opt:hover{background:rgba(70,72,212,.06)}
-.fsel-opt .cnt{margin-left:auto;padding-left:10px;color:var(--on-surface-variant);font-size:11px;
-  font-variant-numeric:tabular-nums;white-space:nowrap}
-.fsel-multi input[type="checkbox"]{width:14px;height:14px;flex:none;accent-color:var(--primary)}
-
 /* ---------- 히어로 ---------- */
 .hero{position:relative;overflow:hidden;border-radius:32px;padding:30px 34px;color:#fff;
   background:linear-gradient(135deg,#4f46e5 0%,#6d5ce8 55%,#8b5cf6 100%);
@@ -872,7 +844,6 @@ var FILTER_DEFS = [
   {key:'kind',   label:'학교/기관'},
   {key:'level',  label:'학교·기관 유형'},
   {key:'estab',  label:'설립구분'},
-  {key:'fstat',  label:'시설운용상태'},
   {key:'ftype',  label:'시설유형'},
   {key:'fuse',   label:'시설주용도'},
   {key:'stu',    label:'학생주로이용'},
@@ -884,58 +855,25 @@ var FILTER_DEFS = [
 
 /* dimAge = [dimKey, dictValIdx, ageIdx] — "임의 차원 × 경과연수" 교차 히트맵
    (구조/시설주용도/점검방법/설립구분/연면적구간 공통) 셀 클릭 선택. 한 번에 하나만 선택된다.
-   stuTier = [stuDictValIdx, tierVal(0/1)] — "학생주로이용시설 비교" 카드 클릭 선택.
-   F.dim[key] / F.age 는 null(=전체, 제한 없음) 이거나 Set(선택된 dict 인덱스들) —
-   상단 필터바는 체크박스로 여러 값을 동시에 선택(OR)할 수 있고, 카드·리스트 행 클릭은
-   기존처럼 "그 값 하나로만 좁히기(배타적 선택)"를 유지한다. */
+   stuTier = [stuDictValIdx, tierVal(0/1)] — "학생주로이용시설 비교" 카드 클릭 선택. */
 var F = { dim:{}, age:null, flag:null, trans:null, cross:null, dimAge:null, stuTier:null };
 FILTER_DEFS.forEach(function(d){ F.dim[d.key] = null; });
 
-function dimHas(key, idx){ var s=F.dim[key]; return !!s && s.has(idx); }
-function dimSetSingle(key, idx){
-  var s = F.dim[key];
-  F.dim[key] = (s && s.size===1 && s.has(idx)) ? null : new Set([idx]);
-}
-function dimSummary(key, max){
-  var s = F.dim[key]; if(!s) return null;
-  if(!s.size) return '0개 선택';
-  max = max||3;
-  var names = Array.from(s).map(function(idx){ return DICT[key][idx]; });
-  return names.length<=max ? names.join(', ') : names.slice(0,max).join(', ')+' 외 '+(names.length-max)+'개';
-}
-function ageHas(a){ return !!F.age && F.age.has(a); }
-function ageSetSingle(a){
-  F.age = (F.age && F.age.size===1 && F.age.has(a)) ? null : new Set([a]);
-}
-
-/* 필터바 드롭다운 중 현재 열려 있는 것의 key (한 번에 하나만 연다) */
-var openFilterKey = null;
-
 var MASK = new Uint8Array(N);
 
-/* Set → dict-인덱스 크기의 0/1 lookup 배열. 반복문 안에서 Set.has() 대신 배열 인덱싱만
-   쓰기 위한 변환 — dict 카디널리티가 커봤자 수백이라 매 buildMask() 호출마다 새로 만들어도 싸다. */
-function setToLookup(set, card){
-  var lut = new Uint8Array(card);
-  set.forEach(function(v){ lut[v]=1; });
-  return lut;
-}
-
 function buildMask(){
-  var dimCols = [], dimLuts = [];
+  var dimKeys = [], dimVals = [];
   FILTER_DEFS.forEach(function(d){
-    var s = F.dim[d.key];
-    if(s){ dimCols.push(COL[d.key]); dimLuts.push(setToLookup(s, DICT[d.key].length)); }
+    if(F.dim[d.key] !== null){ dimKeys.push(COL[d.key]); dimVals.push(F.dim[d.key]); }
   });
-  var nk = dimCols.length;
-  var ageLut = F.age ? setToLookup(F.age, 7) : null;
-  var flag = F.flag, tr = F.trans, cr = F.cross, da = F.dimAge, sf = F.stuTier;
+  var nk = dimKeys.length;
+  var age = F.age, flag = F.flag, tr = F.trans, cr = F.cross, da = F.dimAge, sf = F.stuTier;
   var colLevel = COL.level, colEstab = COL.estab, colStu = COL.stu;
   var daCol = da ? COL[da[0]] : null;
   for(var i=0;i<N;i++){
     var ok = 1;
-    for(var k=0;k<nk;k++){ if(!dimLuts[k][dimCols[k][i]]){ ok=0; break; } }
-    if(ok && ageLut && !ageLut[AGE[i]]) ok=0;
+    for(var k=0;k<nk;k++){ if(dimKeys[k][i] !== dimVals[k]){ ok=0; break; } }
+    if(ok && age!==null && AGE[i]!==age) ok=0;
     if(ok && flag!==null && !(FLAG[i]&flag)) ok=0;
     if(ok && tr && (COL.prev[i]!==tr[0] || COL.cur[i]!==tr[1])) ok=0;
     if(ok && cr && (colLevel[i]!==cr[0] || colEstab[i]!==cr[1])) ok=0;
@@ -1069,19 +1007,19 @@ function computeFilterCounts(){
   var nd = keys.length;
   var age = new Float64Array(7);
 
-  var aIdx = [], aCol = [], aLut = [];
-  for(var j=0;j<nd;j++) if(F.dim[keys[j]]){
-    aIdx.push(j); aCol.push(cols[j]); aLut.push(setToLookup(F.dim[keys[j]], DICT[keys[j]].length));
+  var aIdx = [], aCol = [], aVal = [];
+  for(var j=0;j<nd;j++) if(F.dim[keys[j]]!==null){
+    aIdx.push(j); aCol.push(cols[j]); aVal.push(F.dim[keys[j]]);
   }
-  var na = aIdx.length, ageLut = F.age ? setToLookup(F.age, 7) : null;
+  var na = aIdx.length, ageF = F.age;
 
   for(var i=0;i<N;i++){
     var fails = 0, failDim = -1;
     for(var k=0;k<na;k++){
-      if(!aLut[k][aCol[k][i]]){ fails++; failDim = aIdx[k]; if(fails>1) break; }
+      if(aCol[k][i] !== aVal[k]){ fails++; failDim = aIdx[k]; if(fails>1) break; }
     }
     if(fails === 0) age[AGE[i]]++;                       // 경과연수 옵션은 차원 필터만 반영
-    if(ageLut && !ageLut[AGE[i]]) continue;               // 경과연수 필터는 모든 차원에 적용
+    if(ageF !== null && AGE[i] !== ageF) continue;        // 경과연수 필터는 모든 차원에 적용
     if(fails === 0){ for(var j2=0;j2<nd;j2++) arrs[j2][cols[j2][i]]++; }
     else if(fails === 1){ arrs[failDim][cols[failDim][i]]++; }
   }
@@ -1096,117 +1034,49 @@ function optionsFor(key){
   return out;
 }
 
-/* 상단 필터바 다중선택 드롭다운 — 트리거 버튼 + (열려 있을 때만) 체크박스 패널.
-   getSet()/setSet()으로 상태를 주고받아 FILTER_DEFS 차원과 경과연수 모두에 재사용한다. */
-function renderCheckDropdown(bar, key, label, options, getSet, setSet){
-  var cur = getSet();
-  var isOpen = openFilterKey === key;
-  var wrap = document.createElement('div'); wrap.className = 'fsel-multi'+(isOpen?' open':'');
-
-  var trigger = document.createElement('button');
-  trigger.type = 'button'; trigger.className = 'fsel-trigger';
-  trigger.setAttribute('aria-label', label);
-  trigger.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
-  var sum = dimSummaryFromSet(cur, options);
-  trigger.textContent = sum ? label+' '+sum : label+' 전체';
-  trigger.onclick = function(e){
-    e.stopPropagation();
-    openFilterKey = isOpen ? null : key;
-    renderFilters();
-  };
-  wrap.appendChild(trigger);
-
-  if(isOpen){
-    var panel = document.createElement('div'); panel.className = 'fsel-panel';
-    panel.onclick = function(e){ e.stopPropagation(); };
-
-    /* "전체"는 null(무필터)과 "지금 보이는 옵션을 전부 담은 Set"을 같은 것으로 취급한다.
-       체크 → 전부 켜짐(=null) → 몇 개만 체크 해제하면 "이것만 빼고 전체" 필터가 된다.
-       빈 Set은 "0개 선택"을 뜻하는 별개 상태로 두고 null로 되돌리지 않는다 —
-       그래야 "전체 해제 → 원하는 것만 다시 체크"도 그대로 동작한다. */
-    var allChecked = !cur || (options.length>0 && options.every(function(o){ return cur.has(o[0]); }));
-    var allRow = document.createElement('label'); allRow.className = 'fsel-all';
-    var allCb = document.createElement('input'); allCb.type = 'checkbox';
-    allCb.checked = allChecked;
-    allCb.indeterminate = !allChecked && !!cur && cur.size>0;
-    allCb.onchange = function(){
-      setSet(allCb.checked ? null : new Set());
-      F.trans=null; F.cross=null; F.dimAge=null; F.stuTier=null;
-      watchPage=1; rawPage=1; refresh();
-    };
-    allRow.appendChild(allCb); allRow.appendChild(document.createTextNode(' 전체'));
-    panel.appendChild(allRow);
-
-    if(options.length > 12){
-      var search = document.createElement('input');
-      search.type = 'search'; search.className = 'fsel-search'; search.placeholder = '검색';
-      search.oninput = function(){
-        var q = search.value.trim().toLowerCase();
-        Array.prototype.forEach.call(listWrap.children, function(row){
-          row.style.display = row.dataset.name.indexOf(q) < 0 ? 'none' : '';
-        });
-      };
-      panel.appendChild(search);
-    }
-
-    var listWrap = document.createElement('div'); listWrap.className = 'fsel-list';
-    options.forEach(function(o){
-      var row = document.createElement('label'); row.className = 'fsel-opt';
-      row.dataset.name = String(o[1]).toLowerCase();
-      var cb = document.createElement('input'); cb.type = 'checkbox';
-      cb.checked = !cur || cur.has(o[0]);
-      cb.onchange = function(){
-        var base = cur===null ? new Set(options.map(function(o2){ return o2[0]; })) : new Set(cur);
-        if(cb.checked) base.add(o[0]); else base.delete(o[0]);
-        setSet(base.size===options.length ? null : base);
-        F.trans=null; F.cross=null; F.dimAge=null; F.stuTier=null;
-        watchPage=1; rawPage=1; refresh();
-      };
-      row.appendChild(cb);
-      var txt = document.createElement('span'); txt.textContent = o[1]; row.appendChild(txt);
-      if(o[2]!==undefined){
-        var cnt = document.createElement('span'); cnt.className='cnt'; cnt.textContent = fmt(o[2]);
-        row.appendChild(cnt);
-      }
-      listWrap.appendChild(row);
-    });
-    panel.appendChild(listWrap);
-    wrap.appendChild(panel);
-  }
-  bar.appendChild(wrap);
-}
-function dimSummaryFromSet(set, options){
-  if(!set) return null;
-  if(!set.size) return '0개 선택';
-  var byIdx = {}; options.forEach(function(o){ byIdx[o[0]]=o[1]; });
-  var names = Array.from(set).map(function(idx){ return byIdx[idx]!==undefined ? byIdx[idx] : idx; });
-  return names.length<=2 ? names.join(', ') : names[0]+' 외 '+(names.length-1)+'개';
-}
-
 function renderFilters(){
   var bar = $('filterBar'); bar.innerHTML = '';
   FILTER_DEFS.forEach(function(d){
-    if(d.parent && !F.dim[d.parent] && !F.dim[d.key]) return;   // 종속 필터
-    renderCheckDropdown(bar, d.key, d.label, optionsFor(d.key),
-      function(){ return F.dim[d.key]; },
-      function(v){ F.dim[d.key] = v; if(d.key==='sido' && v===null) F.dim.office=null; });
+    if(d.parent && F.dim[d.parent]===null && F.dim[d.key]===null) return;   // 종속 필터
+    var wrap = document.createElement('div'); wrap.className = 'fsel';
+    var sel = document.createElement('select');
+    sel.setAttribute('aria-label', d.label);
+    var opts = optionsFor(d.key);
+    var html = '<option value="">'+esc(d.label)+' 전체</option>';
+    opts.forEach(function(o){
+      html += '<option value="'+o[0]+'"'+(F.dim[d.key]===o[0]?' selected':'')+'>'+
+              esc(o[1])+' ('+fmt(o[2])+')</option>';
+    });
+    sel.innerHTML = html;
+    sel.onchange = function(){
+      F.dim[d.key] = this.value==='' ? null : +this.value;
+      if(d.key==='sido') F.dim.office = null;
+      F.trans = null; F.cross = null;
+      refresh();
+    };
+    wrap.appendChild(sel); bar.appendChild(wrap);
   });
 
   /* 경과연수 */
-  var ageOpts = [];
-  AGE_LABELS.forEach(function(l,i){ if(OPT_AGE[i] || ageHas(i)) ageOpts.push([i,l,OPT_AGE[i]]); });
-  renderCheckDropdown(bar, 'age', '경과연수', ageOpts,
-    function(){ return F.age; },
-    function(v){ F.age = v; });
+  var wrap = document.createElement('div'); wrap.className='fsel';
+  var sel = document.createElement('select'); sel.setAttribute('aria-label','경과연수');
+  var h = '<option value="">경과연수 전체</option>';
+  AGE_LABELS.forEach(function(l,i){
+    if(!OPT_AGE[i] && F.age!==i) return;
+    h += '<option value="'+i+'"'+(F.age===i?' selected':'')+'>'+l+' ('+fmt(OPT_AGE[i])+')</option>';
+  });
+  sel.innerHTML = h;
+  sel.onchange = function(){ F.age = this.value==='' ? null : +this.value; refresh(); };
+  wrap.appendChild(sel); $('filterBar').appendChild(wrap);
 
   /* 초기화 */
-  var any = FILTER_DEFS.some(function(d){ return !!F.dim[d.key]; }) ||
-            F.age || F.flag!==null || F.trans || F.cross || F.dimAge || F.stuTier;
+  var any = FILTER_DEFS.some(function(d){ return F.dim[d.key]!==null; }) ||
+            F.age!==null || F.flag!==null || F.trans || F.cross;
   if(any){
     var b = document.createElement('button');
     b.className='btn'; b.textContent='필터 초기화';
     b.onclick = resetAll;
-    bar.appendChild(b);
+    $('filterBar').appendChild(b);
   }
   renderChips();
 }
@@ -1227,20 +1097,11 @@ function renderChips(){
     c.appendChild(x); box.appendChild(c);
   }
   FILTER_DEFS.forEach(function(d){
-    var s = F.dim[d.key]; if(!s) return;
-    var val;
-    if(!s.size) val = '0개 선택(제외됨)';
-    else {
-      var names = Array.from(s).map(function(idx){ return DICT[d.key][idx]; });
-      val = names.length<=3 ? names.join(', ') : names.slice(0,3).join(', ')+' 외 '+(names.length-3)+'개';
-    }
-    chip(d.label, val, function(){ F.dim[d.key]=null; if(d.key==='sido') F.dim.office=null; });
+    if(F.dim[d.key]===null) return;
+    chip(d.label, DICT[d.key][F.dim[d.key]], function(){
+      F.dim[d.key]=null; if(d.key==='sido') F.dim.office=null; });
   });
-  if(F.age){
-    var an = Array.from(F.age).map(function(i){ return AGE_LABELS[i]; });
-    var ageVal = !an.length ? '0개 선택(제외됨)' : (an.length<=3?an.join(', '):an.slice(0,3).join(', ')+' 외 '+(an.length-3)+'개');
-    chip('경과연수', ageVal, function(){ F.age=null; });
-  }
+  if(F.age!==null) chip('경과연수', AGE_LABELS[F.age], function(){ F.age=null; });
   if(F.flag!==null) chip('정합성', FLAG_LABELS[F.flag]||'—', function(){ F.flag=null; });
   if(F.trans) chip('등급 전이', DICT.prev[F.trans[0]]+' → '+DICT.cur[F.trans[1]], function(){ F.trans=null; });
   if(F.cross) chip('유형×설립', DICT.level[F.cross[0]]+' · '+DICT.estab[F.cross[1]], function(){ F.cross=null; });
@@ -1253,7 +1114,6 @@ function renderChips(){
 function resetAll(){
   FILTER_DEFS.forEach(function(d){ F.dim[d.key]=null; });
   F.age=null; F.flag=null; F.trans=null; F.cross=null; F.dimAge=null; F.stuTier=null;
-  openFilterKey=null;
   watchPage=1; rawPage=1; refresh();
 }
 
@@ -1261,8 +1121,8 @@ function resetAll(){
    6. 렌더 — 히어로 · KPI
    ══════════════════════════════════════════════════════════════ */
 function scopeName(){
-  if(F.dim.office) return dimSummary('office');
-  if(F.dim.sido)  return dimSummary('sido');
+  if(F.dim.office!==null) return DICT.office[F.dim.office];
+  if(F.dim.sido!==null)  return DICT.sido[F.dim.sido];
   return '전국';
 }
 
@@ -1271,9 +1131,9 @@ function renderHero(R){
   var parts = [];
   FILTER_DEFS.forEach(function(d){
     if(d.key==='sido'||d.key==='office') return;
-    var sm = dimSummary(d.key); if(sm) parts.push(sm);
+    if(F.dim[d.key]!==null) parts.push(DICT[d.key][F.dim[d.key]]);
   });
-  if(F.age && F.age.size) parts.push(Array.from(F.age).map(function(i){ return AGE_LABELS[i]; }).join(', '));
+  if(F.age!==null) parts.push(AGE_LABELS[F.age]);
   $('heroScope').textContent = scope + (parts.length ? ' · '+parts.join(' · ') : ' 전체');
 
   if(R.total===0){
@@ -1431,7 +1291,7 @@ function renderSido(R){
 
   rows.forEach(function(i){
     var n=B.n[i], cde=B.cde[i], ji=B.ji[i], g=B.g.subarray(i*6,i*6+6);
-    var r = document.createElement('div'); r.className='row'+(dimHas('sido',i)?' on':'');
+    var r = document.createElement('div'); r.className='row'+(F.dim.sido===i?' on':'');
     r.style.cssText=GRID; r.tabIndex=0;
     var nm = document.createElement('div'); nm.className='row-name'; nm.textContent=DICT.sido[i];
     var st = stackEl(g,n);
@@ -1445,7 +1305,7 @@ function renderSido(R){
         tipRow('점검 시설', fmt(n)) + tipRow('C등급 이하', fmt(cde)+' ('+pctS(cde,n,2)+')') +
         tipRow('지적사항', fmt(ji)+'건') + '<hr>' + gradeTip(g,n);
     });
-    r.onclick = function(){ dimSetSingle('sido',i); F.dim.office=null; refresh(); };
+    r.onclick = function(){ F.dim.sido = (F.dim.sido===i?null:i); F.dim.office=null; refresh(); };
     r.onkeydown = function(e){ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); r.onclick(); } };
     list.appendChild(r);
   });
@@ -1564,7 +1424,7 @@ function renderFtype(R){
     var small = n < MIN_SAMPLE;
     var hot = SUMMER[lab] && p > avg && !small;
     var card = document.createElement('div');
-    card.className='risk-card'+(hot?' alert':'')+(dimHas('ftype',i)?' on':'');
+    card.className='risk-card'+(hot?' alert':'')+(F.dim.ftype===i?' on':'');
     card.tabIndex=0;
     var step = RISK[Math.min(5, rampStep(p,[2,5,10,15,20]))];
     var tag = hot
@@ -1587,7 +1447,7 @@ function renderFtype(R){
         '<hr><div style="opacity:.7;font-size:11px">현재 범위 평균 '+avg.toFixed(2)+'%'+
         (small?'<br>표본이 '+fmt(n)+'건이라 비율 변동이 큽니다.':'')+'</div>';
     });
-    card.onclick=function(){ dimSetSingle('ftype',i); refresh(); };
+    card.onclick=function(){ F.dim.ftype = (F.dim.ftype===i?null:i); refresh(); };
     card.onkeydown=function(e){ if(e.key==='Enter'||e.key===' '){e.preventDefault();card.onclick();} };
     host.appendChild(card);
   });
@@ -1699,7 +1559,7 @@ function renderFuse(R){
      초중고와 대학은 건물 규모·운영 방식이 달라 섞어서 순위를 매기면 왜곡되므로
      계열(fuseTier)로도 좁힐 수 있게 한다 — 시설주용도 라벨 자체가 계열마다 겹치지 않는다. */
   DICT.fuse.forEach(function(l,i){
-    if(B.n[i]>=1 && (i!==MISS || dimHas('fuse',MISS)) && (fuseScope!=='student' || FUSE_IS_STUDENT[i]) &&
+    if(B.n[i]>=1 && (i!==MISS || F.dim.fuse===MISS) && (fuseScope!=='student' || FUSE_IS_STUDENT[i]) &&
        (fuseTier==='all' || FUSE_TIER[i]===(fuseTier==='univ'?1:0))) list.push(i);
   });
   var MIN = 30;
@@ -1732,7 +1592,7 @@ function renderFuse(R){
   var wrap=document.createElement('div'); wrap.className='rows'; host.appendChild(wrap);
   top.forEach(function(i,k){
     var n=B.n[i], cde=B.cde[i], ji=B.ji[i], v=vals[k];
-    var r=document.createElement('div'); r.className='row'+(dimHas('fuse',i)?' on':'');
+    var r=document.createElement('div'); r.className='row'+(F.dim.fuse===i?' on':'');
     r.style.cssText=GRID; r.tabIndex=0;
     var nm=document.createElement('div'); nm.className='row-name'; nm.textContent=DICT.fuse[i];
     var color = fuseMetric==='n' ? SEQ[3] : RISK[Math.min(5, rampStep(v,CROSS_BREAKS))];
@@ -1748,7 +1608,7 @@ function renderFuse(R){
         gradeTip(B.g.subarray(i*6,i*6+6),n)+
         (fuseMetric==='n'?'':'<hr><div style="opacity:.7;font-size:11px">세로선 = 현재 범위 평균 '+avg.toFixed(2)+'%</div>');
     });
-    r.onclick=function(){ dimSetSingle('fuse',i); refresh(); };
+    r.onclick=function(){ F.dim.fuse=(F.dim.fuse===i?null:i); refresh(); };
     r.onkeydown=function(e){ if(e.key==='Enter'||e.key===' '){e.preventDefault();r.onclick();} };
     wrap.appendChild(r);
   });
@@ -1842,7 +1702,7 @@ function renderAge(R){
     (function(a){
       var n=B.n[a]; if(!n) return;
       var cde=B.cde[a], ji=B.ji[a], g=B.g.subarray(a*6,a*6+6);
-      var r=document.createElement('div'); r.className='row'+(ageHas(a)?' on':'');
+      var r=document.createElement('div'); r.className='row'+(F.age===a?' on':'');
       r.style.cssText=GRID; r.tabIndex=0;
       var nm=document.createElement('div'); nm.className='row-name'; nm.textContent=AGE_LABELS[a];
       var c1=document.createElement('div'); c1.className='num'; c1.textContent=fmt(n);
@@ -1854,7 +1714,7 @@ function renderAge(R){
           tipRow('C등급 이하', fmt(cde)+' ('+pctS(cde,n,2)+')')+
           tipRow('지적사항', fmt(ji)+'건')+'<hr>'+gradeTip(g,n);
       });
-      r.onclick=function(){ ageSetSingle(a); refresh(); };
+      r.onclick=function(){ F.age=(F.age===a?null:a); refresh(); };
       r.onkeydown=function(e){ if(e.key==='Enter'||e.key===' '){e.preventDefault();r.onclick();} };
       wrap.appendChild(r);
     })(a);
@@ -1886,7 +1746,7 @@ function renderBasement(R){
     var lab=DICT.base[i], n=B.n[i], cde=B.cde[i], ji=B.ji[i], p=cde/n*100;
     var g=B.g.subarray(i*6,i*6+6), small = n < 50;
     var card = document.createElement('div');
-    card.className='risk-card'+(dimHas('base',i)?' on':'');
+    card.className='risk-card'+(F.dim.base===i?' on':'');
     card.tabIndex=0;
     var step = RISK[Math.min(5, rampStep(p,[2,5,10,15,20]))];
     var tag = (lab==='지하없음' || lab==='(미기재)') ? ''
@@ -1903,7 +1763,7 @@ function renderBasement(R){
         tipRow('C등급 이하', fmt(cde)+' ('+p.toFixed(2)+'%)')+
         tipRow('지적사항', fmt(ji)+'건')+'<hr>'+gradeTip(g,n);
     });
-    card.onclick=function(){ dimSetSingle('base',i); refresh(); };
+    card.onclick=function(){ F.dim.base=(F.dim.base===i?null:i); refresh(); };
     card.onkeydown=function(e){ if(e.key==='Enter'||e.key===' '){e.preventDefault();card.onclick();} };
     host.appendChild(card);
   });
@@ -2000,7 +1860,7 @@ function renderStruct(R){
   var wrap=document.createElement('div'); wrap.className='rows'; host.appendChild(wrap);
   list.forEach(function(i,k){
     var n=B.n[i], cde=B.cde[i], ji=B.ji[i], v=vals[k];
-    var r=document.createElement('div'); r.className='row'+(dimHas('struct',i)?' on':'');
+    var r=document.createElement('div'); r.className='row'+(F.dim.struct===i?' on':'');
     r.style.cssText=GRID; r.tabIndex=0;
     var nm=document.createElement('div'); nm.className='row-name'; nm.textContent=DICT.struct[i];
     var color = structMetric==='n' ? SEQ[3] : RISK[Math.min(5, rampStep(v,CROSS_BREAKS))];
@@ -2016,7 +1876,7 @@ function renderStruct(R){
         gradeTip(B.g.subarray(i*6,i*6+6),n)+
         (structMetric==='n'?'':'<hr><div style="opacity:.7;font-size:11px">세로선 = 현재 범위 평균 '+avg.toFixed(2)+'%</div>');
     });
-    r.onclick=function(){ dimSetSingle('struct',i); refresh(); };
+    r.onclick=function(){ F.dim.struct=(F.dim.struct===i?null:i); refresh(); };
     r.onkeydown=function(e){ if(e.key==='Enter'||e.key===' '){e.preventDefault();r.onclick();} };
     wrap.appendChild(r);
   });
@@ -2235,9 +2095,9 @@ function renderMethod(R){
         tipRow('C등급 이하', fmt(cde)+' ('+pctS(cde,n,2)+')')+
         '<hr>'+tipRow('전체 대비 비중', pctS(n,R.total,1));
     });
-    row.onclick=function(){ dimSetSingle('method',i); refresh(); };
+    row.onclick=function(){ F.dim.method=(F.dim.method===i?null:i); refresh(); };
     row.onkeydown=function(e){ if(e.key==='Enter'||e.key===' '){e.preventDefault();row.onclick();} };
-    if(dimHas('method',i)) row.style.background='rgba(255,255,255,.12)', row.style.borderRadius='8px';
+    if(F.dim.method===i) row.style.background='rgba(255,255,255,.12)', row.style.borderRadius='8px';
     host.appendChild(row);
   });
 
@@ -2341,35 +2201,31 @@ var watchPage=1, watchSort={k:W_CUR,dir:-1}, watchQuery='', watchMode='all', PAG
 function watchRows(){
   var out=[];
   var dimSel={};
-  FILTER_DEFS.forEach(function(d){
-    var s = F.dim[d.key];
-    if(s) dimSel[d.key] = new Set(Array.from(s).map(function(idx){ return DICT[d.key][idx]; }));
-  });
-  var ageSel = F.age ? new Set(Array.from(F.age)) : null;
+  FILTER_DEFS.forEach(function(d){ if(F.dim[d.key]!==null) dimSel[d.key]=DICT[d.key][F.dim[d.key]]; });
+  var ageSel = F.age;
   var q = watchQuery.trim().toLowerCase();
 
   for(var i=0;i<D.watch.length;i++){
     var r=D.watch[i];
-    if(dimSel.sido   && !dimSel.sido.has(r[W_SIDO])) continue;
-    if(dimSel.office && !dimSel.office.has(r[W_OFFICE])) continue;
-    if(dimSel.ftype  && !dimSel.ftype.has(r[W_FTYPE])) continue;
-    if(dimSel.fuse   && !dimSel.fuse.has(r[W_FUSE]||'(미기재)')) continue;
-    if(dimSel.cur    && !dimSel.cur.has(r[W_CUR])) continue;
-    if(dimSel.estab  && !dimSel.estab.has(r[W_ESTAB])) continue;
-    if(dimSel.level  && !dimSel.level.has(r[W_LEVEL])) continue;
-    if(dimSel.method && !dimSel.method.has(r[W_METHOD])) continue;
-    if(dimSel.struct && !dimSel.struct.has(r[W_STRUCT])) continue;
-    if(dimSel.kind   && !dimSel.kind.has(r[W_KIND])) continue;
-    if(dimSel.base   && !dimSel.base.has(r[W_BASE])) continue;
-    if(dimSel.stu    && !dimSel.stu.has(r[W_STU])) continue;
-    if(dimSel.fstat  && !dimSel.fstat.has(r[W_FSTAT])) continue;
+    if(dimSel.sido   && r[W_SIDO]!==dimSel.sido) continue;
+    if(dimSel.office && r[W_OFFICE]!==dimSel.office) continue;
+    if(dimSel.ftype  && r[W_FTYPE]!==dimSel.ftype) continue;
+    if(dimSel.fuse   && (r[W_FUSE]||'(미기재)')!==dimSel.fuse) continue;
+    if(dimSel.cur    && r[W_CUR]!==dimSel.cur) continue;
+    if(dimSel.estab  && r[W_ESTAB]!==dimSel.estab) continue;
+    if(dimSel.level  && r[W_LEVEL]!==dimSel.level) continue;
+    if(dimSel.method && r[W_METHOD]!==dimSel.method) continue;
+    if(dimSel.struct && r[W_STRUCT]!==dimSel.struct) continue;
+    if(dimSel.kind   && r[W_KIND]!==dimSel.kind) continue;
+    if(dimSel.base   && r[W_BASE]!==dimSel.base) continue;
+    if(dimSel.stu    && r[W_STU]!==dimSel.stu) continue;
     if(F.cross && (r[W_LEVEL]!==DICT.level[F.cross[0]] ||
                    r[W_ESTAB]!==DICT.estab[F.cross[1]])) continue;
     if(F.trans && (r[W_PREV]!==DICT.prev[F.trans[0]] || r[W_CUR]!==DICT.cur[F.trans[1]])) continue;
     if(F.dimAge && (r[DIMAGE_WATCH_FIELD[F.dimAge[0]]]!==DICT[F.dimAge[0]][F.dimAge[1]] ||
                     watchAgeBucket(r)!==F.dimAge[2])) continue;
     if(F.stuTier && (r[W_STU]!==DICT.stu[F.stuTier[0]] || watchTier(r)!==F.stuTier[1])) continue;
-    if(ageSel && !ageSel.has(watchAgeBucket(r))) continue;
+    if(ageSel!==null && watchAgeBucket(r)!==ageSel) continue;
     if(F.flag !== null && !watchHasFlag(r, F.flag)) continue;
     if(watchMode==='de'   && GRANK[r[W_CUR]]<4) continue;
     if(watchMode==='drop' && r[W_RSN].indexOf('등급하락')<0) continue;
@@ -2593,13 +2449,11 @@ function renderRaw(){
   }
 
   var scope=[];
-  FILTER_DEFS.forEach(function(d){ var sm=dimSummary(d.key); if(sm) scope.push(sm); });
-  if(F.age && F.age.size) scope.push(Array.from(F.age).map(function(i){ return AGE_LABELS[i]; }).join(', '));
+  FILTER_DEFS.forEach(function(d){ if(F.dim[d.key]!==null) scope.push(DICT[d.key][F.dim[d.key]]); });
+  if(F.age!==null) scope.push(AGE_LABELS[F.age]);
   if(F.flag!==null) scope.push(FLAG_LABELS[F.flag]||'정합성 조건');
   if(F.trans) scope.push(DICT.prev[F.trans[0]]+'→'+DICT.cur[F.trans[1]]);
   if(F.cross) scope.push(DICT.level[F.cross[0]]+'·'+DICT.estab[F.cross[1]]);
-  if(F.dimAge) scope.push(DICT[F.dimAge[0]][F.dimAge[1]]+'×'+AGE_LABELS[F.dimAge[2]]);
-  if(F.stuTier) scope.push(DICT.stu[F.stuTier[0]]+'·'+TIER_LABELS[F.stuTier[1]]);
   $('rawDesc').textContent =
     (scope.length ? '현재 선택: '+scope.join(' · ')+'. ' : '현재 필터 없음(전체). ')+
     '위 카드·차트 클릭과 상단 필터가 그대로 적용됩니다. 즉시조치 대상 여부와 무관하게 개별 점검 레코드 '+
@@ -2755,15 +2609,6 @@ function init(){
     clearTimeout(rtimer);
     rtimer = setTimeout(function(){ rawQuery=ri.value; rawPage=1; renderRaw(); }, 180);
   };
-
-  /* 필터 드롭다운 바깥을 클릭하면 닫는다. 패널 안쪽 클릭은 각 요소에서 stopPropagation
-     하므로 여기 닿지 않는다 — 열려 있을 때만 재렌더하면 되므로 대부분의 클릭은 그냥 지나간다. */
-  document.addEventListener('click', function(e){
-    if(openFilterKey===null) return;
-    if(e.target.closest && e.target.closest('.fsel-multi')) return;
-    openFilterKey = null;
-    renderFilters();
-  });
 
   refresh();
   $('loading').style.display='none';
