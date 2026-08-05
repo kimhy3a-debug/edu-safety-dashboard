@@ -33,6 +33,8 @@ C_KIND, C_LEVEL, C_ESTAB = 4, 5, 6
 C_SCHOOL, C_SCHOOL_CD, C_OPSTAT = 7, 8, 9
 C_FAC, C_FAC_CD, C_FSTAT, C_FTYPE, C_FUSE = 10, 11, 12, 13, 14
 C_STRUCT, C_YEAR, C_AREA = 16, 17, 18
+C_FLOOR = 20               # 층수(지상/지하) — "3/2" 형식, 지하층 파생값 계산용
+C_HEIGHT = 23               # 높이 — 옹벽·절토사면 등에만 채워짐, "8.6m" 형식
 C_METHOD, C_PREV, C_CUR = 27, 29, 30
 C_PERIOD, C_JI, C_CREW, C_DONE = 31, 32, 33, 35
 
@@ -40,13 +42,17 @@ C_PERIOD, C_JI, C_CREW, C_DONE = 31, 32, 33, 35
 # school/fac/period 은 집계용이 아니라 Raw 데이터 섹션에서 개별 레코드를
 # 복원하기 위한 것 — 카디널리티가 높아 wide(16bit) 인코딩으로 자동 전환된다.
 DIMS = [
-    ("sido", C_SIDO), ("office", C_OFFICE), ("level", C_LEVEL),
+    ("sido", C_SIDO), ("office", C_OFFICE), ("kind", C_KIND), ("level", C_LEVEL),
     ("estab", C_ESTAB), ("ftype", C_FTYPE), ("fuse", C_FUSE),
     ("method", C_METHOD), ("prev", C_PREV), ("cur", C_CUR),
     ("struct", C_STRUCT), ("opstat", C_OPSTAT), ("fstat", C_FSTAT),
     ("done", C_DONE),
     ("school", C_SCHOOL), ("fac", C_FAC), ("period", C_PERIOD),
 ]
+# "base"(지하층 보유)는 원본 컬럼을 그대로 옮기는 게 아니라 C_FLOOR 값을 파싱한
+# 파생 차원이라 DIMS 튜플로 표현할 수 없다. dict/cols 인코딩은 DIMS와 동일한
+# 방식을 타야 하므로 아래에서 DIMS에 이어붙여 함께 순회한다.
+ALL_DIMS = DIMS + [("base", None)]
 
 BASE_YEAR = 2026          # 점검 연도 = 경과연수 기준
 GRADE_RANK = {"A등급": 1, "B등급": 2, "C등급": 3, "D등급": 4, "E등급": 5}
@@ -106,6 +112,38 @@ def parse_area(s):
     return float(m.group(1).replace(",", "")) if m else 0.0
 
 
+def classify_basement(s):
+    """'지상/지하' 형식(예: '3/2')에서 지하층 보유 여부를 분류한다."""
+    if not s or s in ("-", "-/-"):
+        return "(미기재)"
+    parts = s.split("/")
+    if len(parts) != 2:
+        return "(미기재)"
+    try:
+        below = int(parts[1])
+    except ValueError:
+        return "(미기재)"
+    if below <= 0:
+        return "지하없음"
+    if below == 1:
+        return "지하1층"
+    if below == 2:
+        return "지하2층"
+    return "지하3층 이상"
+
+
+def parse_height10(s):
+    """'8.6m' 형식을 0.1m 단위 정수(x10)로. 옹벽·절토사면 등에만 값이 있다."""
+    m = re.match(r"([\d,]+(?:\.\d+)?)", s or "")
+    if not m:
+        return 0
+    try:
+        v = float(m.group(1).replace(",", ""))
+    except ValueError:
+        return 0
+    return min(65535, max(0, round(v * 10)))
+
+
 def main():
     src = os.path.abspath(SRC)
     if not os.path.exists(src):
@@ -116,9 +154,9 @@ def main():
     shared = read_shared_strings(z)
     print("공유문자열 %d개 로드" % len(shared))
 
-    dicts = {k: {} for k, _ in DIMS}
-    cols = {k: [] for k, _ in DIMS}
-    ji, yr = [], []
+    dicts = {k: {} for k, _ in ALL_DIMS}
+    cols = {k: [] for k, _ in ALL_DIMS}
+    ji, yr, height10 = [], [], []
     watch = []
     schools = set()
     area_sum = 0.0
@@ -143,12 +181,19 @@ def main():
                 d[raw] = len(d)
             cols[key].append(d[raw])
 
+        base_label = classify_basement(vals[C_FLOOR])
+        d = dicts["base"]
+        if base_label not in d:
+            d[base_label] = len(d)
+        cols["base"].append(d[base_label])
+
         try:
             ji_v = int(vals[C_JI])
         except ValueError:
             ji_v = 0
         ji.append(min(ji_v, 255))
         yr.append(int(vals[C_YEAR]) if vals[C_YEAR].isdigit() else 0)
+        height10.append(parse_height10(vals[C_HEIGHT]))
 
         schools.add(vals[C_SCHOOL_CD] or vals[C_SCHOOL])
         area_sum += parse_area(vals[C_AREA])
@@ -168,8 +213,9 @@ def main():
                 reasons.append("등급하락")
             if many:
                 reasons.append("지적다발")
-            # 0~11 은 표에 그리는 컬럼, 12~14 는 필터 연동 전용
-            # (대시보드 전역 필터가 이 표에도 그대로 걸리게 하려면 필수)
+            # 0~11 은 표에 그리는 컬럼, 12~20 은 필터 연동 전용
+            # (대시보드 전역 필터가 이 표에도 그대로 걸리게 하려면 필수 —
+            #  FILTER_DEFS에 차원을 추가할 때마다 여기도 함께 늘려야 한다)
             watch.append([
                 vals[C_SIDO], vals[C_OFFICE] or "(직속)", vals[C_SCHOOL],
                 vals[C_FAC], vals[C_FUSE] or "(미기재)", vals[C_FTYPE],
@@ -178,6 +224,7 @@ def main():
                 "|".join(reasons), vals[C_PERIOD],
                 vals[C_ESTAB], vals[C_LEVEL], vals[C_METHOD],
                 vals[C_OPSTAT], vals[C_FSTAT], vals[C_DONE],
+                vals[C_STRUCT] or "(미기재)", vals[C_KIND], base_label,
             ])
 
         if n % 20000 == 0:
@@ -201,15 +248,16 @@ def main():
             "builtAt": datetime.datetime.now().strftime("%Y-%m-%d %H:%M"),
             "source": os.path.basename(src),
         },
-        "dict": {k: list(dicts[k].keys()) for k, _ in DIMS},
+        "dict": {k: list(dicts[k].keys()) for k, _ in ALL_DIMS},
         "cols": {},
         "wide": [],
         "ji": b64_u8(ji),
         "yr": b64_u16(yr),
+        "height10": b64_u16(height10),
         "watch": watch,
     }
 
-    for key, _ in DIMS:
+    for key, _ in ALL_DIMS:
         card = len(dicts[key])
         if card > 255:
             payload["cols"][key] = b64_u16(cols[key])
