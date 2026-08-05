@@ -37,12 +37,15 @@ C_METHOD, C_PREV, C_CUR = 27, 29, 30
 C_PERIOD, C_JI, C_CREW, C_DONE = 31, 32, 33, 35
 
 # 대시보드에 임베드할 차원 (키 -> 원본 컬럼)
+# school/fac/period 은 집계용이 아니라 Raw 데이터 섹션에서 개별 레코드를
+# 복원하기 위한 것 — 카디널리티가 높아 wide(16bit) 인코딩으로 자동 전환된다.
 DIMS = [
     ("sido", C_SIDO), ("office", C_OFFICE), ("level", C_LEVEL),
     ("estab", C_ESTAB), ("ftype", C_FTYPE), ("fuse", C_FUSE),
     ("method", C_METHOD), ("prev", C_PREV), ("cur", C_CUR),
     ("struct", C_STRUCT), ("opstat", C_OPSTAT), ("fstat", C_FSTAT),
     ("done", C_DONE),
+    ("school", C_SCHOOL), ("fac", C_FAC), ("period", C_PERIOD),
 ]
 
 BASE_YEAR = 2026          # 점검 연도 = 경과연수 기준
