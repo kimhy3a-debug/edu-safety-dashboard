@@ -185,7 +185,10 @@ button{font-family:inherit;font-size:inherit;cursor:pointer;border:none;backgrou
 .kpis{display:grid;grid-template-columns:repeat(6,1fr);gap:var(--gap)}
 @media(max-width:1279px){.kpis{grid-template-columns:repeat(3,1fr)}}
 @media(max-width:719px){.kpis{grid-template-columns:repeat(2,1fr)}}
-.kpi{padding:18px 18px 16px;display:flex;flex-direction:column;gap:10px}
+.kpi{padding:18px 18px 16px;display:flex;flex-direction:column;gap:10px;transition:.12s}
+.kpi.clickable{cursor:pointer}
+.kpi.clickable:hover{box-shadow:0 10px 25px -5px rgba(99,102,241,.32);transform:translateY(-1px)}
+.kpi.on{box-shadow:inset 0 0 0 2px var(--primary)}
 .kpi-top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
 .kpi-ico{width:36px;height:36px;border-radius:var(--r-md);display:grid;place-items:center;
   font-size:17px;flex:none}
@@ -314,8 +317,8 @@ thead th.sorted{color:var(--primary)}
 tbody td{padding:9px 10px;border-bottom:1px solid rgba(199,196,215,.4);vertical-align:middle}
 tbody tr:hover{background:rgba(70,72,212,.05)}
 td.n{font-variant-numeric:tabular-nums;text-align:right}
-.gr{display:inline-flex;align-items:center;gap:5px;font-weight:800;font-size:11.5px;white-space:nowrap}
-.gr i{width:9px;height:9px;border-radius:3px;flex:none}
+.gr-badge{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;
+  border-radius:50%;color:#fff;font-weight:800;font-size:11px;flex:none;vertical-align:middle}
 .arrow{color:var(--on-surface-variant);opacity:.55;margin:0 3px}
 .rsn{display:inline-block;font-family:var(--font-label);font-size:9.5px;font-weight:600;letter-spacing:.04em;
   padding:2px 7px;border-radius:var(--r-full);white-space:nowrap}
@@ -676,6 +679,7 @@ footer{padding:34px var(--margin) 46px;text-align:center;font-size:11.5px;
             <div class="search"><input id="watchSearch" type="search" placeholder="학교·기관명 또는 시설명 검색" autocomplete="off"/></div>
             <button class="btn" id="btnCsvWatch">이 표 CSV 저장</button>
           </div>
+          <div class="filters-inner" id="watchFilterBar" style="margin-bottom:12px"></div>
           <div class="tbl-scroll">
             <table id="watchTable">
               <thead><tr id="watchHead"></tr></thead>
@@ -704,6 +708,7 @@ footer{padding:34px var(--margin) 46px;text-align:center;font-size:11.5px;
             <div class="search"><input id="rawSearch" type="search" placeholder="학교·기관명 또는 시설명 검색" autocomplete="off"/></div>
             <button class="btn" id="btnCsvRaw">이 표 CSV 저장</button>
           </div>
+          <div class="filters-inner" id="rawFilterBar" style="margin-bottom:12px"></div>
           <div class="tbl-scroll">
             <table id="rawTable">
               <thead><tr id="rawHead"></tr></thead>
@@ -827,7 +832,7 @@ var TIER = new Uint8Array(N);
    시설주용도 원문 기준으로 이미 판정돼 있으므로, 실측 데이터에서 역으로 매핑만 뽑는다. */
 var FUSE_IS_STUDENT = new Uint8Array(DICT.fuse.length);
 (function(){
-  var stuYes = idxOf('stu','학생주로이용');
+  var stuYes = idxOf('stu','학생주로이용시설');
   for(var i=0;i<N;i++) if(COL.stu[i]===stuYes) FUSE_IS_STUDENT[COL.fuse[i]]=1;
 })();
 
@@ -875,7 +880,7 @@ var FILTER_DEFS = [
   {key:'fstat',  label:'시설운용상태'},
   {key:'ftype',  label:'시설유형'},
   {key:'fuse',   label:'시설주용도'},
-  {key:'stu',    label:'학생주로이용'},
+  {key:'stu',    label:'학생주로이용시설'},
   {key:'struct', label:'시설구조'},
   {key:'base',   label:'지하층'},
   {key:'method', label:'점검방법'},
@@ -888,13 +893,25 @@ var FILTER_DEFS = [
    F.dim[key] / F.age 는 null(=전체, 제한 없음) 이거나 Set(선택된 dict 인덱스들) —
    상단 필터바는 체크박스로 여러 값을 동시에 선택(OR)할 수 있고, 카드·리스트 행 클릭은
    기존처럼 "그 값 하나로만 좁히기(배타적 선택)"를 유지한다. */
-var F = { dim:{}, age:null, flag:null, trans:null, cross:null, dimAge:null, stuTier:null };
+var F = { dim:{}, age:null, flag:null, trans:null, cross:null, dimAge:null, stuTier:null, hasJi:null };
 FILTER_DEFS.forEach(function(d){ F.dim[d.key] = null; });
 
 function dimHas(key, idx){ var s=F.dim[key]; return !!s && s.has(idx); }
 function dimSetSingle(key, idx){
   var s = F.dim[key];
   F.dim[key] = (s && s.size===1 && s.has(idx)) ? null : new Set([idx]);
+}
+/* KPI 카드처럼 "정확히 이 값들의 집합"을 통째로 토글해야 할 때(예: C등급 이하 = C·D·E) */
+function dimEquals(key, idxs){
+  var s = F.dim[key]; if(!s || s.size!==idxs.length) return false;
+  return idxs.every(function(i){ return s.has(i); });
+}
+function dimSetExact(key, idxs){
+  F.dim[key] = dimEquals(key, idxs) ? null : new Set(idxs);
+}
+function ageEquals(idxs){
+  var s = F.age; if(!s || s.size!==idxs.length) return false;
+  return idxs.every(function(i){ return s.has(i); });
 }
 function dimSummary(key, max){
   var s = F.dim[key]; if(!s) return null;
@@ -929,7 +946,7 @@ function buildMask(){
   });
   var nk = dimCols.length;
   var ageLut = F.age ? setToLookup(F.age, 7) : null;
-  var flag = F.flag, tr = F.trans, cr = F.cross, da = F.dimAge, sf = F.stuTier;
+  var flag = F.flag, tr = F.trans, cr = F.cross, da = F.dimAge, sf = F.stuTier, hasJi = F.hasJi;
   var colLevel = COL.level, colEstab = COL.estab, colStu = COL.stu;
   var daCol = da ? COL[da[0]] : null;
   for(var i=0;i<N;i++){
@@ -941,6 +958,7 @@ function buildMask(){
     if(ok && cr && (colLevel[i]!==cr[0] || colEstab[i]!==cr[1])) ok=0;
     if(ok && da && (daCol[i]!==da[1] || AGE[i]!==da[2])) ok=0;
     if(ok && sf && (colStu[i]!==sf[0] || TIER[i]!==sf[1])) ok=0;
+    if(ok && hasJi && JI[i]<1) ok=0;
     MASK[i]=ok;
   }
 }
@@ -1201,7 +1219,7 @@ function renderFilters(){
 
   /* 초기화 */
   var any = FILTER_DEFS.some(function(d){ return !!F.dim[d.key]; }) ||
-            F.age || F.flag!==null || F.trans || F.cross || F.dimAge || F.stuTier;
+            F.age || F.flag!==null || F.trans || F.cross || F.dimAge || F.stuTier || F.hasJi;
   if(any){
     var b = document.createElement('button');
     b.className='btn'; b.textContent='필터 초기화';
@@ -1215,7 +1233,7 @@ var FLAG_LABELS = {};
 FLAG_LABELS[F_FUSE]='시설주용도 미기재'; FLAG_LABELS[F_YEAR]='사용승인연도 미기재';
 FLAG_LABELS[F_YEAR_ODD]='사용승인연도 이상치'; FLAG_LABELS[F_STATUS]='폐교·불용 시설';
 FLAG_LABELS[F_UNDONE]='점검 미완료'; FLAG_LABELS[F_GRADE]='금차등급 누락';
-FLAG_LABELS[F_CONFLICT]='등급·지적 불일치';
+FLAG_LABELS[F_CONFLICT]='등급·지적 불일치'; FLAG_LABELS[F_DROP]='등급 하락';
 
 function renderChips(){
   var box = $('activeChips'); box.innerHTML='';
@@ -1246,13 +1264,14 @@ function renderChips(){
   if(F.cross) chip('유형×설립', DICT.level[F.cross[0]]+' · '+DICT.estab[F.cross[1]], function(){ F.cross=null; });
   if(F.dimAge) chip(DIMAGE_LABELS[F.dimAge[0]]+'×경과연수',
     DICT[F.dimAge[0]][F.dimAge[1]]+' · '+AGE_LABELS[F.dimAge[2]], function(){ F.dimAge=null; });
-  if(F.stuTier) chip('학생주로이용×학교급',
+  if(F.stuTier) chip('학생주로이용시설×학교급',
     DICT.stu[F.stuTier[0]]+' · '+TIER_LABELS[F.stuTier[1]], function(){ F.stuTier=null; });
+  if(F.hasJi) chip('지적사항', '1건 이상', function(){ F.hasJi=null; });
 }
 
 function resetAll(){
   FILTER_DEFS.forEach(function(d){ F.dim[d.key]=null; });
-  F.age=null; F.flag=null; F.trans=null; F.cross=null; F.dimAge=null; F.stuTier=null;
+  F.age=null; F.flag=null; F.trans=null; F.cross=null; F.dimAge=null; F.stuTier=null; F.hasJi=null;
   openFilterKey=null;
   watchPage=1; rawPage=1; refresh();
 }
@@ -1308,37 +1327,59 @@ function deltaBadge(rate, baseRate, higherIsBad){
           bad: higherIsBad ? d > 0 : d < 0};
 }
 
+/* KPI 카드 클릭 시 적용할 등급 인덱스 — 매 호출 lookup 은 낭비이므로 모듈 스코프에서 한 번만 계산 */
+var CUR_C = idxOf('cur','C등급'), CUR_D = idxOf('cur','D등급'), CUR_E = idxOf('cur','E등급');
+var CDE_IDXS = [CUR_C,CUR_D,CUR_E].filter(function(i){ return i>=0; });
+var DE_IDXS  = [CUR_D,CUR_E].filter(function(i){ return i>=0; });
+
 function renderKpis(R){
   var worst = R.grades[3]+R.grades[4];
   var per100 = R.total ? (R.ji/R.total*100).toFixed(1) : '0.0';
   var cdeD = deltaBadge(R.total?R.cde/R.total:0, BASE.total?BASE.cde/BASE.total:0, true);
   var jiD  = deltaBadge(R.total?R.ji/R.total:0,  BASE.total?BASE.ji/BASE.total:0,  true);
   var oldD = deltaBadge(R.total?R.old40/R.total:0, BASE.total?BASE.old40/BASE.total:0, true);
+  var isOld40On = !!(F.age && F.age.size===1 && F.age.has(5));
 
   var items = [
     {k:'점검 시설',  v:fmt(R.total), sub:D.meta.plan, ico:'🏫', tint:'70,72,212',
      badge:(R.total===BASE.total ? '전수' : pctS(R.total,BASE.total,1)+' 선택'), bad:false},
     {k:'C등급 이하', v:fmt(R.cde),  sub:'전체의 '+pctS(R.cde,R.total,2), ico:'⚠️', tint:'224,164,22',
-     badge:(cdeD?cdeD.text:'전수 기준 6.81%'), bad:(cdeD?cdeD.bad:false)},
+     badge:(cdeD?cdeD.text:'전수 기준 6.81%'), bad:(cdeD?cdeD.bad:false),
+     on:dimEquals('cur',CDE_IDXS), onClick:function(){ dimSetExact('cur',CDE_IDXS); watchPage=1; rawPage=1; refresh(); }},
     {k:'D·E등급',    v:fmt(worst),  sub:'중점 관리 필요', ico:'🚨', tint:'224,56,79',
-     badge:(worst?'즉시 확인':'없음'), bad:worst>0},
+     badge:(worst?'즉시 확인':'없음'), bad:worst>0,
+     on:dimEquals('cur',DE_IDXS), onClick:function(){ dimSetExact('cur',DE_IDXS); watchPage=1; rawPage=1; refresh(); }},
     {k:'지적사항',   v:fmt(R.ji),   sub:'시설 100개당 '+per100+'건', ico:'📋', tint:'70,72,212',
-     badge:(jiD?jiD.text:'100개당 '+per100+'건'), bad:(jiD?jiD.bad:false)},
+     badge:(jiD?jiD.text:'100개당 '+per100+'건'), bad:(jiD?jiD.bad:false),
+     on:!!F.hasJi, onClick:function(){ F.hasJi = F.hasJi?null:true; watchPage=1; rawPage=1; refresh(); }},
     {k:'등급 하락',  v:fmt(R.dropped), sub:'개선 '+fmt(R.improved)+'개 대비', ico:'📉', tint:'224,56,79',
-     badge:(R.improved?('개선 '+fmt(R.improved)):'개선 없음'), bad:R.dropped>R.improved},
+     badge:(R.improved?('개선 '+fmt(R.improved)):'개선 없음'), bad:R.dropped>R.improved,
+     on:F.flag===F_DROP, onClick:function(){ F.flag = (F.flag===F_DROP?null:F_DROP); watchPage=1; rawPage=1; refresh(); }},
     {k:'40년 이상',  v:fmt(R.old40), sub:'노후 시설 비중 '+pctS(R.old40,R.total,1), ico:'🏚️', tint:'70,72,212',
-     badge:(oldD?oldD.text:'전수 기준 23.1%'), bad:(oldD?oldD.bad:false)}
+     badge:(oldD?oldD.text:'전수 기준 23.1%'), bad:(oldD?oldD.bad:false),
+     on:isOld40On, onClick:function(){ ageSetSingle(5); watchPage=1; rawPage=1; refresh(); }}
   ];
-  $('kpis').innerHTML = items.map(function(it){
+  var host = $('kpis'); host.innerHTML='';
+  items.forEach(function(it){
     var col = it.bad ? '224,56,79' : (it.tint==='224,164,22' ? '176,116,0' : it.tint);
-    return '<div class="glass kpi">'+
+    var card = document.createElement('div');
+    card.className = 'glass kpi'+(it.onClick?' clickable':'')+(it.on?' on':'');
+    card.innerHTML =
       '<div class="kpi-top">'+
         '<div class="kpi-ico" style="background:rgba('+it.tint+',.12)">'+it.ico+'</div>'+
         '<span class="kpi-badge" style="background:rgba('+col+',.13);color:rgb('+col+')">'+esc(it.badge)+'</span>'+
       '</div>'+
       '<div><div class="kpi-k">'+esc(it.k)+'</div><div class="kpi-v">'+esc(it.v)+'</div></div>'+
-      '<div class="kpi-sub">'+esc(it.sub)+'</div></div>';
-  }).join('');
+      '<div class="kpi-sub">'+esc(it.sub)+'</div>';
+    if(it.onClick){
+      card.tabIndex = 0;
+      card.setAttribute('role','button');
+      card.setAttribute('aria-pressed', it.on?'true':'false');
+      card.onclick = it.onClick;
+      card.onkeydown = function(e){ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); it.onClick(); } };
+    }
+    host.appendChild(card);
+  });
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -1688,7 +1729,7 @@ var fuseMetric='cde', fuseScope='all', fuseTier='all';
 function renderFuse(R){
   renderSeg('fuseMetric',[['cde','C이하율'],['ji','지적률'],['n','건수']],fuseMetric,
     function(v){ fuseMetric=v; refresh(); });
-  renderSelectSeg('fuseScope',[['all','전체'],['student','학생주로이용만']],fuseScope,
+  renderSelectSeg('fuseScope',[['all','전체'],['student','학생주로이용시설만']],fuseScope,
     function(v){ fuseScope=v; refresh(); });
   renderSelectSeg('fuseTier',[['all','전체'],['k12','17개 시도교육청'],['univ','대학계열']],fuseTier,
     function(v){ fuseTier=v; refresh(); });
@@ -1765,7 +1806,7 @@ function renderFuse(R){
    시설주용도 라벨 자체가 두 계열 사이에 겹치지 않으므로(도서실≠도서관 등) TIER로만 가른다. */
 function renderStuCompare(R){
   var B = R.stuTier;
-  var stuYes = idxOf('stu','학생주로이용'), stuNo = idxOf('stu','기타');
+  var stuYes = idxOf('stu','학생주로이용시설'), stuNo = idxOf('stu','기타');
   var host = $('stuCompareChart'); host.innerHTML='';
   var cards = [
     {tier:0, stu:stuYes, tierLabel:'17개 시도교육청 등(초중고·유치원 등)', stuLabel:'학생주로이용시설'},
@@ -1819,7 +1860,7 @@ function renderStuCompare(R){
   }
   $('stuCompareNote').textContent = parts.length
     ? parts.join(', ')+'입니다. 분류는 교육시설통합정보망 건물검색 상세조건의 교육기본/지원시설(17개 시도교육청·대학 각각 다른 목록) 중 학생 접점이 큰 용도를 확정한 것입니다.'
-    : '학생주로이용 여부 × 학교급(17개 시도교육청 등/대학계열)으로 위험도를 비교합니다.';
+    : '학생주로이용시설 여부 × 학교급(17개 시도교육청 등/대학계열)으로 위험도를 비교합니다.';
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -2324,19 +2365,66 @@ function watchHasFlag(r, flag){
     default:         return true;
   }
 }
+/* 즉시조치/Raw데이터 표 전용 로컬 검색조건 — 상단 전역 필터와는 별개로 이 표만 추가로 좁힌다.
+   region/level/estab/cur 는 라벨 문자열 그대로 비교하고, dropped/hasJi 는 3단(전체/유/무). */
+function renderLocalFilterBar(hostId, state, onchange){
+  var host = $(hostId); host.innerHTML='';
+  function sel(label, key, values){
+    var wrap = document.createElement('div'); wrap.className='fsel';
+    var s = document.createElement('select'); s.setAttribute('aria-label', label);
+    var html = '<option value="">전체 '+esc(label)+'</option>';
+    values.forEach(function(v){
+      html += '<option value="'+esc(v)+'"'+(state[key]===v?' selected':'')+'>'+esc(v)+'</option>';
+    });
+    s.innerHTML = html;
+    s.onchange = function(){ state[key]=this.value; onchange(); };
+    wrap.appendChild(s); host.appendChild(wrap);
+  }
+  function triSel(label, key, yesLabel, noLabel){
+    var wrap = document.createElement('div'); wrap.className='fsel';
+    var s = document.createElement('select'); s.setAttribute('aria-label', label);
+    s.innerHTML =
+      '<option value="all">전체('+esc(label)+' 무관)</option>'+
+      '<option value="yes"'+(state[key]==='yes'?' selected':'')+'>'+esc(yesLabel)+'</option>'+
+      '<option value="no"'+(state[key]==='no'?' selected':'')+'>'+esc(noLabel)+'</option>';
+    s.onchange = function(){ state[key]=this.value; onchange(); };
+    wrap.appendChild(s); host.appendChild(wrap);
+  }
+  sel('지역', 'region', DICT.sido);
+  sel('학교급', 'level', DICT.level);
+  sel('설립구분', 'estab', DICT.estab);
+  sel('금차등급', 'cur', GRADES);
+  triSel('등급변경', 'dropped', '등급변경 있음', '등급변경 없음');
+  triSel('지적사항', 'hasJi', '지적사항 있음', '지적사항 없음');
+
+  var any = state.region || state.level || state.estab || state.cur || state.dropped!=='all' || state.hasJi!=='all';
+  if(any){
+    var b = document.createElement('button'); b.className='btn'; b.textContent='필터 초기화';
+    b.onclick = function(){
+      state.region=''; state.level=''; state.estab=''; state.cur=''; state.dropped='all'; state.hasJi='all';
+      onchange();
+    };
+    host.appendChild(b);
+  }
+}
+
 var WATCH_COLS = [
   {t:'시도교육청', k:W_SIDO,  w:'150px'},
   {t:'교육지원청', k:W_OFFICE,w:'160px'},
+  {t:'학교급',     k:W_LEVEL, w:'96px'},
+  {t:'설립구분',   k:W_ESTAB, w:'80px'},
   {t:'학교·기관명', k:W_SCHOOL,w:'170px'},
-  {t:'시설명',     k:W_FAC,   w:'180px'},
-  {t:'주용도',     k:W_FUSE,  w:'110px'},
-  {t:'승인연도',   k:W_YEAR,  w:'74px',  num:true},
-  {t:'전차 → 금차', k:W_CUR,  w:'132px'},
-  {t:'지적',       k:W_JI,    w:'56px',  num:true},
+  {t:'시설명',     k:W_FAC,   w:'170px'},
+  {t:'주용도',     k:W_FUSE,  w:'100px'},
+  {t:'승인연도',   k:W_YEAR,  w:'70px',  num:true},
+  {t:'점검방법',   k:W_METHOD,w:'88px'},
+  {t:'전차 → 금차', k:W_CUR,  w:'110px'},
+  {t:'지적',       k:W_JI,    w:'52px',  num:true},
   {t:'사유',       k:W_RSN,   w:'130px'}
 ];
 var GRANK={'A등급':1,'B등급':2,'C등급':3,'D등급':4,'E등급':5};
 var watchPage=1, watchSort={k:W_CUR,dir:-1}, watchQuery='', watchMode='all', PAGE=20;
+var watchFilter = {region:'', level:'', estab:'', cur:'', dropped:'all', hasJi:'all'};
 
 function watchRows(){
   var out=[];
@@ -2369,11 +2457,20 @@ function watchRows(){
     if(F.dimAge && (r[DIMAGE_WATCH_FIELD[F.dimAge[0]]]!==DICT[F.dimAge[0]][F.dimAge[1]] ||
                     watchAgeBucket(r)!==F.dimAge[2])) continue;
     if(F.stuTier && (r[W_STU]!==DICT.stu[F.stuTier[0]] || watchTier(r)!==F.stuTier[1])) continue;
+    if(F.hasJi && r[W_JI]<1) continue;
     if(ageSel && !ageSel.has(watchAgeBucket(r))) continue;
     if(F.flag !== null && !watchHasFlag(r, F.flag)) continue;
     if(watchMode==='de'   && GRANK[r[W_CUR]]<4) continue;
     if(watchMode==='drop' && r[W_RSN].indexOf('등급하락')<0) continue;
     if(watchMode==='many' && r[W_JI]<5) continue;
+    if(watchFilter.region && r[W_SIDO]!==watchFilter.region) continue;
+    if(watchFilter.level  && r[W_LEVEL]!==watchFilter.level) continue;
+    if(watchFilter.estab  && r[W_ESTAB]!==watchFilter.estab) continue;
+    if(watchFilter.cur    && r[W_CUR]!==watchFilter.cur) continue;
+    if(watchFilter.dropped==='yes' && r[W_RSN].indexOf('등급하락')<0) continue;
+    if(watchFilter.dropped==='no'  && r[W_RSN].indexOf('등급하락')>=0) continue;
+    if(watchFilter.hasJi==='yes'   && r[W_JI]<1) continue;
+    if(watchFilter.hasJi==='no'    && r[W_JI]>=1) continue;
     if(q && (r[W_SCHOOL]+' '+r[W_FAC]+' '+r[W_SIDO]+' '+r[W_OFFICE]).toLowerCase().indexOf(q)<0) continue;
     out.push(r);
   }
@@ -2390,8 +2487,10 @@ function watchRows(){
 }
 
 function gradeChip(g){
-  var c = GCOLOR[g] || GX;
-  return '<span class="gr"><i style="background:'+c+'"></i>'+esc(g)+'</span>';
+  var m = GRADES.indexOf(g);
+  var c = m>=0 ? GCOLOR[g] : GX;
+  var label = m>=0 ? g.charAt(0) : '-';
+  return '<span class="gr-badge" style="background:'+c+'" title="'+esc(g||'-')+'">'+label+'</span>';
 }
 function reasonChip(r){
   var map={'D·E등급':['224,56,79'],'등급하락':['176,116,0'],'지적다발':['70,72,212']};
@@ -2404,6 +2503,7 @@ function reasonChip(r){
 function renderWatch(){
   renderSeg('watchFilter',[['all','전체'],['de','D·E등급'],['drop','등급 하락'],['many','지적 5건+']],
     watchMode, function(v){ watchMode=v; watchPage=1; renderWatch(); });
+  renderLocalFilterBar('watchFilterBar', watchFilter, function(){ watchPage=1; renderWatch(); });
 
   var rows = watchRows();
   var pages = Math.max(1, Math.ceil(rows.length/PAGE));
@@ -2412,7 +2512,7 @@ function renderWatch(){
 
   $('watchHead').innerHTML = WATCH_COLS.map(function(c){
     var on = watchSort.k===c.k;
-    return '<th data-k="'+c.k+'" style="width:'+c.w+'"'+(on?' class="sorted"':'')+'>'+
+    return '<th data-k="'+c.k+'" style="width:'+c.w+(c.num?';text-align:center':'')+'"'+(on?' class="sorted"':'')+'>'+
       esc(c.t)+(on ? (watchSort.dir<0?' ▾':' ▴') : '')+'</th>';
   }).join('');
   Array.prototype.forEach.call($('watchHead').children, function(th){
@@ -2431,12 +2531,15 @@ function renderWatch(){
       return '<tr>'+
         '<td>'+esc(r[W_SIDO])+'</td>'+
         '<td style="color:var(--on-surface-variant)">'+esc(r[W_OFFICE])+'</td>'+
+        '<td style="color:var(--on-surface-variant)">'+esc(r[W_LEVEL])+'</td>'+
+        '<td style="color:var(--on-surface-variant)">'+esc(r[W_ESTAB])+'</td>'+
         '<td style="font-weight:700">'+esc(r[W_SCHOOL])+'</td>'+
         '<td>'+esc(r[W_FAC])+'</td>'+
         '<td style="color:var(--on-surface-variant)">'+esc(r[W_FUSE]||'(미기재)')+'</td>'+
-        '<td class="n">'+esc(r[W_YEAR]||'—')+'</td>'+
+        '<td class="n" style="text-align:center">'+esc(r[W_YEAR]||'—')+'</td>'+
+        '<td style="color:var(--on-surface-variant)">'+esc(r[W_METHOD])+'</td>'+
         '<td>'+gradeChip(r[W_PREV])+'<span class="arrow">→</span>'+gradeChip(r[W_CUR])+'</td>'+
-        '<td class="n" style="font-weight:800'+(r[W_JI]>=5?';color:var(--risk-5)':'')+'">'+r[W_JI]+'</td>'+
+        '<td class="n" style="text-align:center;font-weight:800'+(r[W_JI]>=5?';color:var(--risk-5)':'')+'">'+r[W_JI]+'</td>'+
         '<td>'+reasonChip(r[W_RSN])+'</td></tr>';
     }).join('');
   }
@@ -2466,18 +2569,21 @@ function renderWatch(){
    그대로 반영한 개별 레코드 뷰. compute()가 채워 둔 R.rowIdx를 그대로 쓴다.
    ══════════════════════════════════════════════════════════════ */
 var RAW_COLS = [
-  {k:'sido',   t:'시도교육청',   w:'110px'},
-  {k:'office', t:'교육지원청',   w:'130px'},
-  {k:'school', t:'학교·기관명',  w:'170px'},
-  {k:'fac',    t:'시설명',       w:'170px'},
-  {k:'fuse',   t:'주용도',       w:'104px'},
-  {k:'year',   t:'승인연도',     w:'72px',  num:true},
-  {k:'method', t:'점검방법',     w:'86px'},
-  {k:'trans',  t:'전차 → 금차',  w:'132px'},
-  {k:'ji',     t:'지적',         w:'52px',  num:true},
-  {k:'flag',   t:'특이사항',     w:'170px'}
+  {k:'sido',   t:'시도교육청',   w:'104px'},
+  {k:'office', t:'교육지원청',   w:'120px'},
+  {k:'level',  t:'학교급',       w:'88px'},
+  {k:'estab',  t:'설립구분',     w:'74px'},
+  {k:'school', t:'학교·기관명',  w:'150px'},
+  {k:'fac',    t:'시설명',       w:'150px'},
+  {k:'fuse',   t:'주용도',       w:'96px'},
+  {k:'year',   t:'승인연도',     w:'68px',  num:true},
+  {k:'method', t:'점검방법',     w:'80px'},
+  {k:'trans',  t:'전차 → 금차',  w:'110px'},
+  {k:'ji',     t:'지적',         w:'48px',  num:true},
+  {k:'flag',   t:'특이사항',     w:'150px'}
 ];
 var rawPage=1, rawSort=null, rawQuery='';
+var rawFilter = {region:'', level:'', estab:'', cur:'', dropped:'all', hasJi:'all'};
 
 function rawFlagLabels(i){
   var f = FLAG[i], out=[];
@@ -2491,6 +2597,8 @@ function rawField(i, k){
   switch(k){
     case 'sido':   return DICT.sido[COL.sido[i]];
     case 'office': return DICT.office[COL.office[i]];
+    case 'level':  return DICT.level[COL.level[i]];
+    case 'estab':  return DICT.estab[COL.estab[i]];
     case 'school': return DICT.school[COL.school[i]];
     case 'fac':    return DICT.fac[COL.fac[i]];
     case 'fuse':   return DICT.fuse[COL.fuse[i]];
@@ -2516,6 +2624,14 @@ function rawRows(){
   var idx = LAST.rowIdx, out=[], q = rawQuery.trim().toLowerCase();
   for(var n=0;n<idx.length;n++){
     var i = idx[n];
+    if(rawFilter.region && rawField(i,'sido')!==rawFilter.region) continue;
+    if(rawFilter.level  && rawField(i,'level')!==rawFilter.level) continue;
+    if(rawFilter.estab  && rawField(i,'estab')!==rawFilter.estab) continue;
+    if(rawFilter.cur    && rawField(i,'cur')!==rawFilter.cur) continue;
+    if(rawFilter.dropped==='yes' && !(FLAG[i]&F_DROP)) continue;
+    if(rawFilter.dropped==='no'  && (FLAG[i]&F_DROP)) continue;
+    if(rawFilter.hasJi==='yes'   && JI[i]<1) continue;
+    if(rawFilter.hasJi==='no'    && JI[i]>=1) continue;
     if(q){
       var hay = (rawField(i,'school')+' '+rawField(i,'fac')+' '+rawField(i,'sido')+' '+rawField(i,'office')).toLowerCase();
       if(hay.indexOf(q)<0) continue;
@@ -2536,6 +2652,8 @@ function rawRows(){
   return out;
 }
 function renderRaw(){
+  renderLocalFilterBar('rawFilterBar', rawFilter, function(){ rawPage=1; renderRaw(); });
+
   var rows = rawRows();
   var pages = Math.max(1, Math.ceil(rows.length/PAGE));
   if(rawPage>pages) rawPage=pages;
@@ -2543,7 +2661,7 @@ function renderRaw(){
 
   $('rawHead').innerHTML = RAW_COLS.map(function(c){
     var on = rawSort && rawSort.k===c.k;
-    return '<th data-k="'+c.k+'" style="width:'+c.w+'"'+(on?' class="sorted"':'')+'>'+
+    return '<th data-k="'+c.k+'" style="width:'+c.w+(c.num?';text-align:center':'')+'"'+(on?' class="sorted"':'')+'>'+
       esc(c.t)+(on ? (rawSort.dir<0?' ▾':' ▴') : '')+'</th>';
   }).join('');
   Array.prototype.forEach.call($('rawHead').children, function(th){
@@ -2563,13 +2681,15 @@ function renderRaw(){
       return '<tr>'+
         '<td>'+esc(rawField(i,'sido'))+'</td>'+
         '<td style="color:var(--on-surface-variant)">'+esc(rawField(i,'office'))+'</td>'+
+        '<td style="color:var(--on-surface-variant)">'+esc(rawField(i,'level'))+'</td>'+
+        '<td style="color:var(--on-surface-variant)">'+esc(rawField(i,'estab'))+'</td>'+
         '<td style="font-weight:700">'+esc(rawField(i,'school'))+'</td>'+
         '<td>'+esc(rawField(i,'fac'))+'</td>'+
         '<td style="color:var(--on-surface-variant)">'+esc(rawField(i,'fuse'))+'</td>'+
-        '<td class="n">'+esc(rawField(i,'year')||'—')+'</td>'+
+        '<td class="n" style="text-align:center">'+esc(rawField(i,'year')||'—')+'</td>'+
         '<td style="color:var(--on-surface-variant)">'+esc(rawField(i,'method'))+'</td>'+
         '<td>'+gradeChip(rawField(i,'prev'))+'<span class="arrow">→</span>'+gradeChip(rawField(i,'cur'))+'</td>'+
-        '<td class="n" style="font-weight:800'+(JI[i]>=5?';color:var(--risk-5)':'')+'">'+JI[i]+'</td>'+
+        '<td class="n" style="text-align:center;font-weight:800'+(JI[i]>=5?';color:var(--risk-5)':'')+'">'+JI[i]+'</td>'+
         '<td>'+rawFlagChips(i)+'</td></tr>';
     }).join('');
   }
@@ -2627,7 +2747,7 @@ function exportWatch(){
   var head = ['시도교육청','교육지원청','학교·기관명','시설명','시설주용도','시설유형',
               '사용승인연도','전차안전등급','금차안전등급','지적사항수','선정사유','안전점검기간',
               '설립구분','학교·기관 유형','점검방법','학교운영상태','시설운용상태','점검완료여부',
-              '시설구조','학교/기관','지하층','연면적구간','학생주로이용'];
+              '시설구조','학교/기관','지하층','연면적구간','학생주로이용시설'];
   var body = rows.map(function(r){ return r.map(csvCell).join(','); });
   download('즉시조치대상_'+scopeName()+'_'+stamp()+'.csv', [head.join(',')].concat(body).join('\r\n'));
 }

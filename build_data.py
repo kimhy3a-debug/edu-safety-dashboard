@@ -72,7 +72,7 @@ STUDENT_FUSE = {
 
 
 def classify_stu(fuse_raw):
-    return "학생주로이용" if fuse_raw in STUDENT_FUSE else "기타"
+    return "학생주로이용시설" if fuse_raw in STUDENT_FUSE else "기타"
 
 BASE_YEAR = 2026          # 점검 연도 = 경과연수 기준
 GRADE_RANK = {"A등급": 1, "B등급": 2, "C등급": 3, "D등급": 4, "E등급": 5}
