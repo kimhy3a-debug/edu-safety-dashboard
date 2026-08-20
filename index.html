@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>교육시설 안전점검 대시보드 · 2026년도 여름철</title>
+<title>교육시설통합정보망 2026 여름철 안전점검 리포트</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;700;800&family=Outfit:wght@600&display=swap" rel="stylesheet"/>
@@ -74,6 +74,41 @@ body{
 .c12{grid-column:span 12}.c7{grid-column:span 7}.c5{grid-column:span 5}
 .c6{grid-column:span 6}.c8{grid-column:span 8}.c4{grid-column:span 4}
 @media(max-width:1279px){.c7,.c5,.c6,.c8,.c4{grid-column:span 12}}
+
+/* ---------- 사이드바 ---------- */
+html{scroll-behavior:smooth}
+.sidebar{position:fixed;top:0;left:0;bottom:0;width:250px;z-index:80;
+  background:rgba(255,255,255,.82);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);
+  border-right:1px solid rgba(255,255,255,.6);box-shadow:4px 0 24px -8px rgba(99,102,241,.15);
+  overflow-y:auto;display:flex;flex-direction:column;padding:18px 12px 24px}
+.sidebar-logo{display:flex;align-items:center;gap:10px;padding:6px 8px 18px;margin-bottom:6px;
+  border-bottom:1px solid var(--outline-variant)}
+.sidebar-logo .ico{width:38px;height:38px;border-radius:var(--r-md);display:grid;place-items:center;
+  font-size:18px;flex:none;background:linear-gradient(135deg,var(--primary),var(--primary-container));
+  color:#fff;box-shadow:0 4px 10px -2px rgba(70,72,212,.45)}
+.sidebar-logo .tt{min-width:0}
+.sidebar-logo .tt b{display:block;font-size:13px;font-weight:800;letter-spacing:-.01em;
+  color:var(--on-surface);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sidebar-logo .tt span{display:block;font-size:10px;color:var(--on-surface-variant);opacity:.8;margin-top:1px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sidebar-group{margin-top:16px}
+.sidebar-group-label{font-family:var(--font-label);font-size:10px;font-weight:700;letter-spacing:.08em;
+  text-transform:uppercase;color:var(--on-surface-variant);opacity:.6;padding:0 10px 6px}
+.sidebar-link{display:flex;align-items:center;gap:9px;padding:7px 9px;border-radius:var(--r-md);
+  font-size:12.5px;font-weight:700;color:var(--on-surface-variant);text-decoration:none;
+  transition:background .12s,color .12s;margin-bottom:2px}
+.sidebar-link:hover{background:rgba(70,72,212,.07);color:var(--primary)}
+.sidebar-link .ico{width:25px;height:25px;border-radius:7px;display:grid;place-items:center;
+  font-size:13px;flex:none;background:rgba(70,72,212,.08)}
+.sidebar-link.active{background:rgba(70,72,212,.13);color:var(--primary);
+  box-shadow:inset 0 0 0 1px rgba(70,72,212,.2)}
+.sidebar-link.active .ico{background:var(--primary);}
+.content-shell{margin-left:250px}
+@media(max-width:1099px){
+  .sidebar{display:none}
+  .content-shell{margin-left:0}
+}
+[id^="sec-"]{scroll-margin-top:172px}
 
 /* ---------- 헤더 ---------- */
 header{position:sticky;top:0;z-index:60}
@@ -359,7 +394,8 @@ footer{padding:34px var(--margin) 46px;text-align:center;font-size:11.5px;
 @media print{
   @page{size:A4 landscape;margin:10mm}
   body{background:#fff;animation:none}
-  header,.filters,.hd-actions,.pager,.tbl-tools{display:none!important}
+  header,.filters,.hd-actions,.pager,.tbl-tools,.sidebar{display:none!important}
+  .content-shell{margin-left:0!important}
   .glass,.dark-card{box-shadow:none;border:1px solid #d5d2e0;break-inside:avoid;background:#fff}
   .dark-card{background:#fff!important;color:#1b1b23}
   .dark-card .desc,.dsub{color:#464554}
@@ -373,11 +409,44 @@ footer{padding:34px var(--margin) 46px;text-align:center;font-size:11.5px;
 
 <div id="loading"><div><div class="spin"></div>데이터를 불러오는 중…</div></div>
 
+<aside class="sidebar" id="sidebarNav">
+  <div class="sidebar-logo">
+    <div class="ico">🏫</div>
+    <div class="tt">
+      <b>교육시설통합정보망</b>
+      <span>2026 여름철 안전점검</span>
+    </div>
+  </div>
+
+  <div class="sidebar-group">
+    <div class="sidebar-group-label">개요</div>
+    <a class="sidebar-link" href="#sec-kpi"><span class="ico">📊</span>핵심 지표</a>
+    <a class="sidebar-link" href="#sec-grade"><span class="ico">🛡️</span>안전등급 현황</a>
+  </div>
+
+  <div class="sidebar-group">
+    <div class="sidebar-group-label">분류별 분석</div>
+    <a class="sidebar-link" href="#sec-summer"><span class="ico">⛈️</span>여름철 리스크</a>
+    <a class="sidebar-link" href="#sec-level"><span class="ico">🏫</span>학교급·설립구분</a>
+    <a class="sidebar-link" href="#sec-fuse"><span class="ico">🎒</span>시설주용도·교육기본지원</a>
+    <a class="sidebar-link" href="#sec-age"><span class="ico">🏚️</span>경과연수(노후도)</a>
+  </div>
+
+  <div class="sidebar-group">
+    <div class="sidebar-group-label">심화 분석</div>
+    <a class="sidebar-link" href="#sec-matrix"><span class="ico">🧱</span>구조·경과연수 매트릭스</a>
+    <a class="sidebar-link" href="#sec-quality"><span class="ico">🔍</span>점검품질·정합성</a>
+    <a class="sidebar-link" href="#sec-watch"><span class="ico">🚨</span>즉시조치 검토대상</a>
+    <a class="sidebar-link" href="#sec-raw"><span class="ico">🗂️</span>원자료 조회</a>
+  </div>
+</aside>
+
+<div class="content-shell">
 <header>
   <div class="glass-bar">
     <div class="wrap hd">
       <div style="min-width:0">
-        <div class="hd-title">교육시설 안전점검 대시보드</div>
+        <div class="hd-title">교육시설통합정보망 2026 여름철 안전점검 리포트</div>
         <div class="hd-sub" id="hdSub">교육시설통합정보망 · 교육시설법 제23조</div>
       </div>
       <div class="hd-actions">
@@ -416,10 +485,10 @@ footer{padding:34px var(--margin) 46px;text-align:center;font-size:11.5px;
     </section>
 
     <!-- ② KPI -->
-    <section class="c12"><div class="kpis" id="kpis"></div></section>
+    <section class="c12" id="sec-kpi"><div class="kpis" id="kpis"></div></section>
 
     <!-- ③ 시도교육청 -->
-    <section class="c7">
+    <section class="c7" id="sec-grade">
       <div class="glass card">
         <div class="card-hd">
           <div>
@@ -439,7 +508,7 @@ footer{padding:34px var(--margin) 46px;text-align:center;font-size:11.5px;
         <div class="card-hd">
           <div>
             <h3>전차 → 금차 등급 전이</h3>
-            <p class="desc">붉은 칸은 등급이 떨어진 시설, 초록 칸은 개선된 시설입니다. 칸을 클릭하면 해당 시설만 봅니다.</p>
+            <p class="desc">붉은 칸은 등급이 떨어진 시설, 초록 칸은 개선된 시설, 파란 칸은 전차 기록이 없던 신규 편입 시설, 호박색 칸은 금차등급이 미기재라 전이를 판단할 수 없는 시설입니다. 칸을 클릭하면 해당 시설만 봅니다.</p>
           </div>
         </div>
         <div class="card-body" id="transChart"></div>
@@ -448,7 +517,7 @@ footer{padding:34px var(--margin) 46px;text-align:center;font-size:11.5px;
     </section>
 
     <!-- ⑤ 여름철 리스크 -->
-    <section class="c5">
+    <section class="c5" id="sec-summer">
       <div class="glass card">
         <div class="card-hd">
           <div>
@@ -463,7 +532,7 @@ footer{padding:34px var(--margin) 46px;text-align:center;font-size:11.5px;
     </section>
 
     <!-- ⑥ 학교급 × 설립구분 -->
-    <section class="c7">
+    <section class="c7" id="sec-level">
       <div class="glass card">
         <div class="card-hd">
           <div>
@@ -506,7 +575,7 @@ footer{padding:34px var(--margin) 46px;text-align:center;font-size:11.5px;
     </section>
 
     <!-- ⑨ 시설주용도 -->
-    <section class="c6">
+    <section class="c6" id="sec-fuse">
       <div class="glass card">
         <div class="card-hd">
           <div>
@@ -523,13 +592,13 @@ footer{padding:34px var(--margin) 46px;text-align:center;font-size:11.5px;
       </div>
     </section>
 
-    <!-- ⑨-2 학생주로이용시설 위험도 비교 -->
-    <section class="c12">
+    <!-- ⑨-2 교육기본지원시설 위험도 비교 -->
+    <section class="c6">
       <div class="glass card">
         <div class="card-hd">
           <div>
-            <h3>학생주로이용시설 위험도 비교</h3>
-            <p class="desc">시설주용도를 "학생이 주로 이용하는 시설"과 "기타(행정·연구·부속 등)"로 나눠, 17개 시도교육청(초중고 등)과 대학계열을 각각 비교합니다. 대학은 주용도 분류 체계 자체가 달라 계열별로 따로 봅니다.</p>
+            <h3>교육기본지원시설 위험도 비교</h3>
+            <p class="desc">시설주용도를 "교육기본지원시설"과 "기타(행정·연구·부속 등)"로 나눠 17개 시도교육청·대학계열을 비교합니다. 대학은 분류 체계가 달라 계열별로 따로 봅니다.</p>
           </div>
         </div>
         <div class="card-body"><div class="risk-grid" id="stuCompareChart"></div></div>
@@ -539,7 +608,7 @@ footer{padding:34px var(--margin) 46px;text-align:center;font-size:11.5px;
     </section>
 
     <!-- ⑩ 노후도 -->
-    <section class="c6">
+    <section class="c6" id="sec-age">
       <div class="glass card">
         <div class="card-hd">
           <div>
@@ -567,7 +636,7 @@ footer{padding:34px var(--margin) 46px;text-align:center;font-size:11.5px;
     </section>
 
     <!-- ⑫ 구조 × 경과연수 -->
-    <section class="c7">
+    <section class="c7" id="sec-matrix">
       <div class="glass card">
         <div class="card-hd">
           <div>
@@ -646,7 +715,7 @@ footer{padding:34px var(--margin) 46px;text-align:center;font-size:11.5px;
     </section>
 
     <!-- ⑰ 점검 품질 · 정합성 -->
-    <section class="c12">
+    <section class="c12" id="sec-quality">
       <div class="dark-card">
         <h3>점검 품질 &amp; 데이터 정합성 <span style="font-size:11px;font-weight:600;opacity:.6;letter-spacing:.05em">통합정보망 운영자 관점</span></h3>
         <p class="desc" style="font-size:12.5px;margin-top:4px">점검 결과 자체가 아니라 <b>점검·입력이 균질하게 이뤄졌는지</b>를 봅니다. 항목을 클릭하면 해당 레코드만 필터링됩니다.</p>
@@ -665,7 +734,7 @@ footer{padding:34px var(--margin) 46px;text-align:center;font-size:11.5px;
     </section>
 
     <!-- ⑱ 워치리스트 -->
-    <section class="c12">
+    <section class="c12" id="sec-watch">
       <div class="glass card">
         <div class="card-hd">
           <div>
@@ -695,7 +764,7 @@ footer{padding:34px var(--margin) 46px;text-align:center;font-size:11.5px;
     </section>
 
     <!-- ⑲ Raw 데이터 -->
-    <section class="c12">
+    <section class="c12" id="sec-raw">
       <div class="glass card">
         <div class="card-hd">
           <div>
@@ -731,6 +800,8 @@ footer{padding:34px var(--margin) 46px;text-align:center;font-size:11.5px;
   <div style="margin-top:6px">교육시설 등의 안전 및 유지관리 등에 관한 법률 제23조에 따른 교육시설통합정보망 · 내부 검토용</div>
 </footer>
 
+</div><!-- /.content-shell -->
+
 <div id="tip" role="tooltip"></div>
 
 <script src="dashboard_data.js"></script>
@@ -755,6 +826,8 @@ var GX = '#a29fb2';                       // 미지정/미기재
 var SEQ  = ['#a5a7ef','#8385e6','#6164dc','#4648d4','#3634b8','#252399'];
 var RISK = ['#ec9a85','#e07a63','#d15845','#bc3a2e','#a02620','#7d1714'];
 var IMP  = ['#9dd8bd','#5cbf95','#23a06e','#0a8a5c'];
+var NEWG = ['#bfdbfe','#93c5fd','#60a5fa','#2563eb'];   // 신규(전차 미지정→금차 등급 부여) 전용 파란 계열
+var MISSG = ['#fde68a','#f5c451','#e0a416'];            // 금차등급 미기재(전이 자체를 판단 불가) 전용 호박색 계열
 var NEUTRAL = '#e6e2f0';
 var AGE_LABELS = ['5년 미만','5~9년','10~19년','20~29년','30~39년','40년 이상','미기재'];
 
@@ -820,7 +893,7 @@ for(var i=0;i<N;i++){
 }
 
 /* 학교급 대분류: 0=17개 시도교육청 등(초중고·유치원 등), 1=대학계열(대학/전문대학/대학원)
-   — 별도 필터/dict 없이 level에서 파생한다("시설주용도 TOP20" 계열 토글, "학생주로이용시설 비교" 카드에서 사용). */
+   — 별도 필터/dict 없이 level에서 파생한다("시설주용도 TOP20" 계열 토글, "교육기본지원시설 비교" 카드에서 사용). */
 var TIER_LABELS = ['17개 시도교육청 등','대학계열'];
 var TIER = new Uint8Array(N);
 (function(){
@@ -828,11 +901,11 @@ var TIER = new Uint8Array(N);
   for(var i=0;i<N;i++) TIER[i] = univ[COL.level[i]] ? 1 : 0;
 })();
 
-/* 시설주용도(fuse) dict 인덱스 → 학생주로이용 여부. stu 차원은 build_data.py에서
+/* 시설주용도(fuse) dict 인덱스 → 교육기본지원시설 여부. stu 차원은 build_data.py에서
    시설주용도 원문 기준으로 이미 판정돼 있으므로, 실측 데이터에서 역으로 매핑만 뽑는다. */
 var FUSE_IS_STUDENT = new Uint8Array(DICT.fuse.length);
 (function(){
-  var stuYes = idxOf('stu','학생주로이용시설');
+  var stuYes = idxOf('stu','교육기본지원시설');
   for(var i=0;i<N;i++) if(COL.stu[i]===stuYes) FUSE_IS_STUDENT[COL.fuse[i]]=1;
 })();
 
@@ -880,7 +953,7 @@ var FILTER_DEFS = [
   {key:'fstat',  label:'시설운용상태'},
   {key:'ftype',  label:'시설유형'},
   {key:'fuse',   label:'시설주용도'},
-  {key:'stu',    label:'학생주로이용시설'},
+  {key:'stu',    label:'교육기본지원시설'},
   {key:'struct', label:'시설구조'},
   {key:'base',   label:'지하층'},
   {key:'method', label:'점검방법'},
@@ -889,7 +962,7 @@ var FILTER_DEFS = [
 
 /* dimAge = [dimKey, dictValIdx, ageIdx] — "임의 차원 × 경과연수" 교차 히트맵
    (구조/시설주용도/점검방법/설립구분/연면적구간 공통) 셀 클릭 선택. 한 번에 하나만 선택된다.
-   stuTier = [stuDictValIdx, tierVal(0/1)] — "학생주로이용시설 비교" 카드 클릭 선택.
+   stuTier = [stuDictValIdx, tierVal(0/1)] — "교육기본지원시설 비교" 카드 클릭 선택.
    F.dim[key] / F.age 는 null(=전체, 제한 없음) 이거나 Set(선택된 dict 인덱스들) —
    상단 필터바는 체크박스로 여러 값을 동시에 선택(OR)할 수 있고, 카드·리스트 행 클릭은
    기존처럼 "그 값 하나로만 좁히기(배타적 선택)"를 유지한다. */
@@ -978,7 +1051,7 @@ function newBucket(card){
 
 function compute(){
   buildMask();
-  var R = { total:0, ji:0, cde:0, dropped:0, improved:0, watch:0, old40:0,
+  var R = { total:0, ji:0, cde:0, dropped:0, improved:0, brandNew:0, watch:0, old40:0,
             grades:new Float64Array(6), dim:{}, age:newBucket(7),
             cross:newBucket(DICT.level.length*DICT.estab.length),
             dimAge:{}, stuTier:newBucket(4),   // stuTier: (stu 0/1)*2 + (TIER 0/1)
@@ -1004,6 +1077,7 @@ function compute(){
     if(f&F_DROP) R.dropped++;
     var pg = PREVG[COL.prev[i]];
     if(pg>=0 && g>=0 && g<pg) R.improved++;
+    else if(pg<0 && g>=0) R.brandNew++;   // 전차 등급 미지정 + 금차 등급 있음 = 이번 점검에 신규 편입
     if((f&F_DROP) || g>=3 || j>=5) R.watch++;
     if(AGE[i]===5) R.old40++;
 
@@ -1107,10 +1181,15 @@ function computeFilterCounts(){
   OPT_AGE = age;
 }
 
+/* 설립구분 고정 표시 순서(사용자 지정): 국립 1순위 > 공립 2순위 > 사립 3순위.
+   목록에 없는 값은 맨 뒤로 보낸다. 필터·표·매트릭스 등 설립구분이 나열되는 모든 곳에서 재사용한다. */
+var ESTAB_PRIORITY = {'국립':1, '공립':2, '사립':3};
+
 function optionsFor(key){
   var counts = OPT_COUNTS[key], out = [];
   DICT[key].forEach(function(lab,i){ if(counts[i]>0) out.push([i,lab,counts[i]]); });
-  out.sort(function(a,b){ return b[2]-a[2]; });
+  if(key==='estab') out.sort(function(a,b){ return (ESTAB_PRIORITY[a[1]]||99) - (ESTAB_PRIORITY[b[1]]||99); });
+  else out.sort(function(a,b){ return b[2]-a[2]; });
   return out;
 }
 
@@ -1264,7 +1343,7 @@ function renderChips(){
   if(F.cross) chip('유형×설립', DICT.level[F.cross[0]]+' · '+DICT.estab[F.cross[1]], function(){ F.cross=null; });
   if(F.dimAge) chip(DIMAGE_LABELS[F.dimAge[0]]+'×경과연수',
     DICT[F.dimAge[0]][F.dimAge[1]]+' · '+AGE_LABELS[F.dimAge[2]], function(){ F.dimAge=null; });
-  if(F.stuTier) chip('학생주로이용시설×학교급',
+  if(F.stuTier) chip('교육기본지원시설×학교급',
     DICT.stu[F.stuTier[0]]+' · '+TIER_LABELS[F.stuTier[1]], function(){ F.stuTier=null; });
   if(F.hasJi) chip('지적사항', '1건 이상', function(){ F.hasJi=null; });
 }
@@ -1532,11 +1611,15 @@ function renderTrans(R){
       var v = R.trans[p[0]*nCur+c[0]];
       var cr = GRADES.indexOf(c[1]);
       var cell=document.createElement('div'); cell.className='hm-cell';
-      var dir = (pr>=0&&cr>=0) ? (cr>pr?1:(cr<pr?-1:0)) : 0;
+      var isNew = (p[1]==='미지정' && cr>=0);   // 전차 등급 미지정(신규 편입) → 금차 등급 부여
+      var isMiss = (c[1]==='(미기재)');          // 금차등급 자체가 미기재 — 전이 방향 판단 불가
+      var dir = (isNew||isMiss) ? 0 : (pr>=0&&cr>=0) ? (cr>pr?1:(cr<pr?-1:0)) : 0;
       var bg = NEUTRAL, ink='var(--on-surface-variant)';
       if(v>0){
         var t = Math.log(v+1)/lmax;
-        if(dir>0){      bg = RISK[Math.min(RISK.length-1, Math.floor(t*RISK.length))]; ink=inkOn(bg); }
+        if(isNew){       bg = NEWG[Math.min(NEWG.length-1, Math.floor(t*NEWG.length))]; ink=inkOn(bg); }
+        else if(isMiss){ bg = MISSG[Math.min(MISSG.length-1, Math.floor(t*MISSG.length))]; ink=inkOn(bg); }
+        else if(dir>0){ bg = RISK[Math.min(RISK.length-1, Math.floor(t*RISK.length))]; ink=inkOn(bg); }
         else if(dir<0){ bg = IMP[Math.min(IMP.length-1, Math.floor(t*IMP.length))];   ink=inkOn(bg); }
         else{ var s=Math.floor(t*4); bg=['#efedf7','#e4e0ef','#d8d3e8','#cbc5e0','#bdb6d8'][Math.min(4,s)]; }
       }
@@ -1547,7 +1630,9 @@ function renderTrans(R){
       cell.tabIndex = v? 0 : -1;
       bindTip(cell, function(){
         return '<b>'+esc(p[1])+' → '+esc(c[1])+'</b><hr>'+ tipRow('시설 수', fmt(v)) +
-          (dir>0 ? '<div style="margin-top:5px;color:#f3a99a">▼ 등급 하락</div>' :
+          (isNew ? '<div style="margin-top:5px;color:#7cb0f7">🆕 신규 편입(전차 기록 없음)</div>' :
+           isMiss ? '<div style="margin-top:5px;color:#e0a416">⚠ 금차등급 미기재(전이 판단 불가)</div>' :
+           dir>0 ? '<div style="margin-top:5px;color:#f3a99a">▼ 등급 하락</div>' :
            dir<0 ? '<div style="margin-top:5px;color:#8fd8bb">▲ 등급 개선</div>' :
                    '<div style="margin-top:5px;opacity:.65">등급 유지</div>');
       });
@@ -1563,7 +1648,9 @@ function renderTrans(R){
   var mv = document.createElement('div');
   mv.style.cssText='display:flex;gap:10px;margin-top:16px;flex-wrap:wrap';
   [['하락',R.dropped,'var(--g-d)'],['개선',R.improved,'var(--g-a)'],
-   ['유지',R.total-R.dropped-R.improved,'var(--outline)']].forEach(function(m){
+   ['신규',R.brandNew,'#2563eb'],
+   ['미기재',R.flags[5],'#e0a416'],
+   ['유지',R.total-R.dropped-R.improved-R.brandNew-R.flags[5],'var(--outline)']].forEach(function(m){
     mv.innerHTML += '<div style="flex:1 1 84px;padding:10px 12px;border-radius:12px;'+
       'background:rgba(255,255,255,.6);border:1px solid rgba(255,255,255,.9)">'+
       '<div style="font-family:var(--font-label);font-size:10px;font-weight:600;letter-spacing:.05em;'+
@@ -1576,6 +1663,10 @@ function renderTrans(R){
     '<span class="ramp">등급 하락 <span class="steps">'+RISK.map(function(c){
       return '<i style="background:'+c+'"></i>'; }).join('')+'</span> 많음</span>'+
     '<span class="ramp">개선 <span class="steps">'+IMP.map(function(c){
+      return '<i style="background:'+c+'"></i>'; }).join('')+'</span></span>'+
+    '<span class="ramp">신규 <span class="steps">'+NEWG.map(function(c){
+      return '<i style="background:'+c+'"></i>'; }).join('')+'</span></span>'+
+    '<span class="ramp">미기재 <span class="steps">'+MISSG.map(function(c){
       return '<i style="background:'+c+'"></i>'; }).join('')+'</span></span>'+
     '<span class="it"><i class="sw" style="background:#cbc5e0"></i>유지(중립)</span>';
 }
@@ -1662,6 +1753,7 @@ function renderCross(R){
     var s=0; for(var k=0;k<DICT.level.length;k++) s+=R.cross.n[k*nE+i];
     if(s>0) estabs.push([i,l]);
   });
+  estabs.sort(function(a,b){ return (ESTAB_PRIORITY[a[1]]||99) - (ESTAB_PRIORITY[b[1]]||99); });
 
   var host=$('crossChart'); host.innerHTML='';
   if(!levels.length||!estabs.length){ host.innerHTML='<div class="empty">데이터 없음</div>'; return; }
@@ -1729,7 +1821,7 @@ var fuseMetric='cde', fuseScope='all', fuseTier='all';
 function renderFuse(R){
   renderSeg('fuseMetric',[['cde','C이하율'],['ji','지적률'],['n','건수']],fuseMetric,
     function(v){ fuseMetric=v; refresh(); });
-  renderSelectSeg('fuseScope',[['all','전체'],['student','학생주로이용시설만']],fuseScope,
+  renderSelectSeg('fuseScope',[['all','전체'],['student','교육기본지원시설만']],fuseScope,
     function(v){ fuseScope=v; refresh(); });
   renderSelectSeg('fuseTier',[['all','전체'],['k12','17개 시도교육청'],['univ','대학계열']],fuseTier,
     function(v){ fuseTier=v; refresh(); });
@@ -1801,17 +1893,17 @@ function renderFuse(R){
   }
 }
 
-/* 학생주로이용시설 위험도 비교 — 17개 시도교육청(초중고 등) vs 대학계열을 나눠서
+/* 교육기본지원시설 위험도 비교 — 17개 시도교육청(초중고 등) vs 대학계열을 나눠서
    "학생 접점 시설"과 "기타(행정·연구·부속 등)"의 위험도를 대조한다.
    시설주용도 라벨 자체가 두 계열 사이에 겹치지 않으므로(도서실≠도서관 등) TIER로만 가른다. */
 function renderStuCompare(R){
   var B = R.stuTier;
-  var stuYes = idxOf('stu','학생주로이용시설'), stuNo = idxOf('stu','기타');
+  var stuYes = idxOf('stu','교육기본지원시설'), stuNo = idxOf('stu','기타');
   var host = $('stuCompareChart'); host.innerHTML='';
   var cards = [
-    {tier:0, stu:stuYes, tierLabel:'17개 시도교육청 등(초중고·유치원 등)', stuLabel:'학생주로이용시설'},
+    {tier:0, stu:stuYes, tierLabel:'17개 시도교육청 등(초중고·유치원 등)', stuLabel:'교육기본지원시설'},
     {tier:0, stu:stuNo,  tierLabel:'17개 시도교육청 등(초중고·유치원 등)', stuLabel:'기타(행정·부속 등)'},
-    {tier:1, stu:stuYes, tierLabel:'대학계열(대학·전문대학·대학원)',      stuLabel:'학생주로이용시설'},
+    {tier:1, stu:stuYes, tierLabel:'대학계열(대학·전문대학·대학원)',      stuLabel:'교육기본지원시설'},
     {tier:1, stu:stuNo,  tierLabel:'대학계열(대학·전문대학·대학원)',      stuLabel:'기타(행정·부속 등)'}
   ];
   var any=false;
@@ -1852,7 +1944,7 @@ function renderStuCompare(R){
   var parts=[];
   if(B.n[y0] && B.n[n0]){
     var kY=B.cde[y0]/B.n[y0]*100, kN=B.cde[n0]/B.n[n0]*100;
-    parts.push('17개 시도교육청 등은 학생주로이용시설 C등급 이하 '+kY.toFixed(2)+'% vs 기타 '+kN.toFixed(2)+'%');
+    parts.push('17개 시도교육청 등은 교육기본지원시설 C등급 이하 '+kY.toFixed(2)+'% vs 기타 '+kN.toFixed(2)+'%');
   }
   if(B.n[y1] && B.n[n1]){
     var uY=B.cde[y1]/B.n[y1]*100, uN=B.cde[n1]/B.n[n1]*100;
@@ -1860,7 +1952,7 @@ function renderStuCompare(R){
   }
   $('stuCompareNote').textContent = parts.length
     ? parts.join(', ')+'입니다. 분류는 교육시설통합정보망 건물검색 상세조건의 교육기본/지원시설(17개 시도교육청·대학 각각 다른 목록) 중 학생 접점이 큰 용도를 확정한 것입니다.'
-    : '학생주로이용시설 여부 × 학교급(17개 시도교육청 등/대학계열)으로 위험도를 비교합니다.';
+    : '교육기본지원시설 여부 × 학교급(17개 시도교육청 등/대학계열)으로 위험도를 비교합니다.';
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -2161,7 +2253,9 @@ var estabAgeMetric='cde';
 function renderEstabAge(R){
   renderSeg('estabAgeMetric',[['cde','C이하율'],['ji','지적률']],estabAgeMetric,
     function(v){ estabAgeMetric=v; refresh(); });
-  var rows = dimRowsByCount('estab', dimAgeTotals(R,'estab'));
+  var totals = dimAgeTotals(R,'estab'), rows=[];
+  DICT.estab.forEach(function(l,i){ if(totals[i]>0) rows.push(i); });
+  rows.sort(function(a,b){ return (ESTAB_PRIORITY[DICT.estab[a]]||99) - (ESTAB_PRIORITY[DICT.estab[b]]||99); });
   renderDimAgeHeatmap(R, 'estab', rows, 'estabAgeChart', 'estabAgeLegend',
     '설립 ↓<br>경과연수 →', function(){ return estabAgeMetric; });
 
@@ -2366,42 +2460,108 @@ function watchHasFlag(r, flag){
   }
 }
 /* 즉시조치/Raw데이터 표 전용 로컬 검색조건 — 상단 전역 필터와는 별개로 이 표만 추가로 좁힌다.
-   region/level/estab/cur 는 라벨 문자열 그대로 비교하고, dropped/hasJi 는 3단(전체/유/무). */
-function renderLocalFilterBar(hostId, state, onchange){
-  var host = $(hostId); host.innerHTML='';
-  function sel(label, key, values){
-    var wrap = document.createElement('div'); wrap.className='fsel';
-    var s = document.createElement('select'); s.setAttribute('aria-label', label);
-    var html = '<option value="">전체 '+esc(label)+'</option>';
-    values.forEach(function(v){
-      html += '<option value="'+esc(v)+'"'+(state[key]===v?' selected':'')+'>'+esc(v)+'</option>';
-    });
-    s.innerHTML = html;
-    s.onchange = function(){ state[key]=this.value; onchange(); };
-    wrap.appendChild(s); host.appendChild(wrap);
-  }
-  function triSel(label, key, yesLabel, noLabel){
-    var wrap = document.createElement('div'); wrap.className='fsel';
-    var s = document.createElement('select'); s.setAttribute('aria-label', label);
-    s.innerHTML =
-      '<option value="all">전체('+esc(label)+' 무관)</option>'+
-      '<option value="yes"'+(state[key]==='yes'?' selected':'')+'>'+esc(yesLabel)+'</option>'+
-      '<option value="no"'+(state[key]==='no'?' selected':'')+'>'+esc(noLabel)+'</option>';
-    s.onchange = function(){ state[key]=this.value; onchange(); };
-    wrap.appendChild(s); host.appendChild(wrap);
-  }
-  sel('지역', 'region', DICT.sido);
-  sel('학교급', 'level', DICT.level);
-  sel('설립구분', 'estab', DICT.estab);
-  sel('금차등급', 'cur', GRADES);
-  triSel('등급변경', 'dropped', '등급변경 있음', '등급변경 없음');
-  triSel('지적사항', 'hasJi', '지적사항 있음', '지적사항 없음');
+   상단 필터바와 동일한 다중선택 체크박스 드롭다운(fsel-multi)을 재사용한다.
+   state[key] 는 null(=전체) 이거나 Set(선택된 값들) — dropped/hasJi 도 'yes'/'no' 두 옵션의
+   체크박스로 취급해 "둘 다 체크=전체" 규칙을 그대로 따른다. */
+var localOpenKey = null;   // 'hostId:key' 형식. 상단 필터바의 openFilterKey 와 별개 상태.
 
-  var any = state.region || state.level || state.estab || state.cur || state.dropped!=='all' || state.hasJi!=='all';
+function localDropdownSummary(set, options){
+  if(!set) return null;
+  if(!set.size) return '0개 선택';
+  var byVal = {}; options.forEach(function(o){ byVal[o[0]] = o[1]; });
+  var names = Array.from(set).map(function(v){ return byVal[v]!==undefined ? byVal[v] : v; });
+  return names.length<=2 ? names.join(', ') : names[0]+' 외 '+(names.length-1)+'개';
+}
+
+function renderLocalCheckDropdown(bar, hostId, key, label, options, state, onchange, rerenderOnly){
+  var full = hostId+':'+key;
+  var cur = state[key];
+  var isOpen = localOpenKey === full;
+  var wrap = document.createElement('div'); wrap.className = 'fsel-multi'+(isOpen?' open':'');
+
+  var trigger = document.createElement('button');
+  trigger.type = 'button'; trigger.className = 'fsel-trigger';
+  trigger.setAttribute('aria-label', label);
+  trigger.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+  var sum = localDropdownSummary(cur, options);
+  trigger.textContent = sum ? label+' '+sum : label+' 전체';
+  trigger.onclick = function(e){
+    e.stopPropagation();
+    localOpenKey = isOpen ? null : full;
+    rerenderOnly();
+  };
+  wrap.appendChild(trigger);
+
+  if(isOpen){
+    var panel = document.createElement('div'); panel.className = 'fsel-panel';
+    panel.onclick = function(e){ e.stopPropagation(); };
+
+    var allChecked = !cur || (options.length>0 && options.every(function(o){ return cur.has(o[0]); }));
+    var allRow = document.createElement('label'); allRow.className = 'fsel-all';
+    var allCb = document.createElement('input'); allCb.type = 'checkbox';
+    allCb.checked = allChecked;
+    allCb.indeterminate = !allChecked && !!cur && cur.size>0;
+    allCb.onchange = function(){
+      state[key] = allCb.checked ? null : new Set();
+      onchange();
+    };
+    allRow.appendChild(allCb); allRow.appendChild(document.createTextNode(' 전체'));
+    panel.appendChild(allRow);
+
+    if(options.length > 12){
+      var search = document.createElement('input');
+      search.type = 'search'; search.className = 'fsel-search'; search.placeholder = '검색';
+      search.oninput = function(){
+        var q = search.value.trim().toLowerCase();
+        Array.prototype.forEach.call(listWrap.children, function(row){
+          row.style.display = row.dataset.name.indexOf(q) < 0 ? 'none' : '';
+        });
+      };
+      panel.appendChild(search);
+    }
+
+    var listWrap = document.createElement('div'); listWrap.className = 'fsel-list';
+    options.forEach(function(o){
+      var row = document.createElement('label'); row.className = 'fsel-opt';
+      row.dataset.name = String(o[1]).toLowerCase();
+      var cb = document.createElement('input'); cb.type = 'checkbox';
+      cb.checked = !cur || cur.has(o[0]);
+      cb.onchange = function(){
+        var base = cur===null ? new Set(options.map(function(o2){ return o2[0]; })) : new Set(cur);
+        if(cb.checked) base.add(o[0]); else base.delete(o[0]);
+        state[key] = base.size===options.length ? null : base;
+        onchange();
+      };
+      row.appendChild(cb);
+      var txt = document.createElement('span'); txt.textContent = o[1]; row.appendChild(txt);
+      listWrap.appendChild(row);
+    });
+    panel.appendChild(listWrap);
+    wrap.appendChild(panel);
+  }
+  bar.appendChild(wrap);
+}
+
+function renderLocalFilterBar(hostId, state, onchange, rerenderOnly){
+  var host = $(hostId); host.innerHTML='';
+  function strOpts(values){ return values.map(function(v){ return [v,v]; }); }
+  var estabOpts = strOpts(DICT.estab.slice().sort(function(a,b){
+    return (ESTAB_PRIORITY[a]||99) - (ESTAB_PRIORITY[b]||99);
+  }));
+  renderLocalCheckDropdown(host, hostId, 'region', '지역', strOpts(DICT.sido), state, onchange, rerenderOnly);
+  renderLocalCheckDropdown(host, hostId, 'level', '학교급', strOpts(DICT.level), state, onchange, rerenderOnly);
+  renderLocalCheckDropdown(host, hostId, 'estab', '설립구분', estabOpts, state, onchange, rerenderOnly);
+  renderLocalCheckDropdown(host, hostId, 'cur', '금차등급', strOpts(GRADES), state, onchange, rerenderOnly);
+  renderLocalCheckDropdown(host, hostId, 'dropped', '등급변경',
+    [['yes','등급변경 있음'],['no','등급변경 없음']], state, onchange, rerenderOnly);
+  renderLocalCheckDropdown(host, hostId, 'hasJi', '지적사항',
+    [['yes','지적사항 있음'],['no','지적사항 없음']], state, onchange, rerenderOnly);
+
+  var any = state.region || state.level || state.estab || state.cur || state.dropped || state.hasJi;
   if(any){
     var b = document.createElement('button'); b.className='btn'; b.textContent='필터 초기화';
     b.onclick = function(){
-      state.region=''; state.level=''; state.estab=''; state.cur=''; state.dropped='all'; state.hasJi='all';
+      state.region=null; state.level=null; state.estab=null; state.cur=null; state.dropped=null; state.hasJi=null;
       onchange();
     };
     host.appendChild(b);
@@ -2424,7 +2584,7 @@ var WATCH_COLS = [
 ];
 var GRANK={'A등급':1,'B등급':2,'C등급':3,'D등급':4,'E등급':5};
 var watchPage=1, watchSort={k:W_CUR,dir:-1}, watchQuery='', watchMode='all', PAGE=20;
-var watchFilter = {region:'', level:'', estab:'', cur:'', dropped:'all', hasJi:'all'};
+var watchFilter = {region:null, level:null, estab:null, cur:null, dropped:null, hasJi:null};
 
 function watchRows(){
   var out=[];
@@ -2463,14 +2623,12 @@ function watchRows(){
     if(watchMode==='de'   && GRANK[r[W_CUR]]<4) continue;
     if(watchMode==='drop' && r[W_RSN].indexOf('등급하락')<0) continue;
     if(watchMode==='many' && r[W_JI]<5) continue;
-    if(watchFilter.region && r[W_SIDO]!==watchFilter.region) continue;
-    if(watchFilter.level  && r[W_LEVEL]!==watchFilter.level) continue;
-    if(watchFilter.estab  && r[W_ESTAB]!==watchFilter.estab) continue;
-    if(watchFilter.cur    && r[W_CUR]!==watchFilter.cur) continue;
-    if(watchFilter.dropped==='yes' && r[W_RSN].indexOf('등급하락')<0) continue;
-    if(watchFilter.dropped==='no'  && r[W_RSN].indexOf('등급하락')>=0) continue;
-    if(watchFilter.hasJi==='yes'   && r[W_JI]<1) continue;
-    if(watchFilter.hasJi==='no'    && r[W_JI]>=1) continue;
+    if(watchFilter.region && !watchFilter.region.has(r[W_SIDO])) continue;
+    if(watchFilter.level  && !watchFilter.level.has(r[W_LEVEL])) continue;
+    if(watchFilter.estab  && !watchFilter.estab.has(r[W_ESTAB])) continue;
+    if(watchFilter.cur    && !watchFilter.cur.has(r[W_CUR])) continue;
+    if(watchFilter.dropped && !watchFilter.dropped.has(r[W_RSN].indexOf('등급하락')>=0 ? 'yes':'no')) continue;
+    if(watchFilter.hasJi   && !watchFilter.hasJi.has(r[W_JI]>=1 ? 'yes':'no')) continue;
     if(q && (r[W_SCHOOL]+' '+r[W_FAC]+' '+r[W_SIDO]+' '+r[W_OFFICE]).toLowerCase().indexOf(q)<0) continue;
     out.push(r);
   }
@@ -2503,7 +2661,7 @@ function reasonChip(r){
 function renderWatch(){
   renderSeg('watchFilter',[['all','전체'],['de','D·E등급'],['drop','등급 하락'],['many','지적 5건+']],
     watchMode, function(v){ watchMode=v; watchPage=1; renderWatch(); });
-  renderLocalFilterBar('watchFilterBar', watchFilter, function(){ watchPage=1; renderWatch(); });
+  renderLocalFilterBar('watchFilterBar', watchFilter, function(){ watchPage=1; renderWatch(); }, renderWatch);
 
   var rows = watchRows();
   var pages = Math.max(1, Math.ceil(rows.length/PAGE));
@@ -2583,7 +2741,7 @@ var RAW_COLS = [
   {k:'flag',   t:'특이사항',     w:'150px'}
 ];
 var rawPage=1, rawSort=null, rawQuery='';
-var rawFilter = {region:'', level:'', estab:'', cur:'', dropped:'all', hasJi:'all'};
+var rawFilter = {region:null, level:null, estab:null, cur:null, dropped:null, hasJi:null};
 
 function rawFlagLabels(i){
   var f = FLAG[i], out=[];
@@ -2624,14 +2782,12 @@ function rawRows(){
   var idx = LAST.rowIdx, out=[], q = rawQuery.trim().toLowerCase();
   for(var n=0;n<idx.length;n++){
     var i = idx[n];
-    if(rawFilter.region && rawField(i,'sido')!==rawFilter.region) continue;
-    if(rawFilter.level  && rawField(i,'level')!==rawFilter.level) continue;
-    if(rawFilter.estab  && rawField(i,'estab')!==rawFilter.estab) continue;
-    if(rawFilter.cur    && rawField(i,'cur')!==rawFilter.cur) continue;
-    if(rawFilter.dropped==='yes' && !(FLAG[i]&F_DROP)) continue;
-    if(rawFilter.dropped==='no'  && (FLAG[i]&F_DROP)) continue;
-    if(rawFilter.hasJi==='yes'   && JI[i]<1) continue;
-    if(rawFilter.hasJi==='no'    && JI[i]>=1) continue;
+    if(rawFilter.region && !rawFilter.region.has(rawField(i,'sido'))) continue;
+    if(rawFilter.level  && !rawFilter.level.has(rawField(i,'level'))) continue;
+    if(rawFilter.estab  && !rawFilter.estab.has(rawField(i,'estab'))) continue;
+    if(rawFilter.cur    && !rawFilter.cur.has(rawField(i,'cur'))) continue;
+    if(rawFilter.dropped && !rawFilter.dropped.has((FLAG[i]&F_DROP) ? 'yes':'no')) continue;
+    if(rawFilter.hasJi   && !rawFilter.hasJi.has(JI[i]>=1 ? 'yes':'no')) continue;
     if(q){
       var hay = (rawField(i,'school')+' '+rawField(i,'fac')+' '+rawField(i,'sido')+' '+rawField(i,'office')).toLowerCase();
       if(hay.indexOf(q)<0) continue;
@@ -2652,7 +2808,7 @@ function rawRows(){
   return out;
 }
 function renderRaw(){
-  renderLocalFilterBar('rawFilterBar', rawFilter, function(){ rawPage=1; renderRaw(); });
+  renderLocalFilterBar('rawFilterBar', rawFilter, function(){ rawPage=1; renderRaw(); }, renderRaw);
 
   var rows = rawRows();
   var pages = Math.max(1, Math.ceil(rows.length/PAGE));
@@ -2747,7 +2903,7 @@ function exportWatch(){
   var head = ['시도교육청','교육지원청','학교·기관명','시설명','시설주용도','시설유형',
               '사용승인연도','전차안전등급','금차안전등급','지적사항수','선정사유','안전점검기간',
               '설립구분','학교·기관 유형','점검방법','학교운영상태','시설운용상태','점검완료여부',
-              '시설구조','학교/기관','지하층','연면적구간','학생주로이용시설'];
+              '시설구조','학교/기관','지하층','연면적구간','교육기본지원시설'];
   var body = rows.map(function(r){ return r.map(csvCell).join(','); });
   download('즉시조치대상_'+scopeName()+'_'+stamp()+'.csv', [head.join(',')].concat(body).join('\r\n'));
 }
@@ -2780,6 +2936,8 @@ function exportSummary(R){
   push(['점검 시설 수', R.total]); push(['C등급 이하', R.cde]);
   push(['C등급 이하 비율(%)', pct(R.cde,R.total,2)]);
   push(['지적사항 수', R.ji]); push(['등급 하락', R.dropped]); push(['등급 개선', R.improved]);
+  push(['신규 편입(전차 미지정)', R.brandNew]);
+  push(['금차등급 미기재(전이 판단 불가)', R.flags[5]]);
   push(['즉시조치 검토 대상', R.watch]); push(['40년 이상 시설', R.old40]);
   push([]);
   push(['금차안전등급','건수','비율(%)']);
@@ -2879,11 +3037,34 @@ function init(){
   /* 필터 드롭다운 바깥을 클릭하면 닫는다. 패널 안쪽 클릭은 각 요소에서 stopPropagation
      하므로 여기 닿지 않는다 — 열려 있을 때만 재렌더하면 되므로 대부분의 클릭은 그냥 지나간다. */
   document.addEventListener('click', function(e){
-    if(openFilterKey===null) return;
+    if(openFilterKey===null && localOpenKey===null) return;
     if(e.target.closest && e.target.closest('.fsel-multi')) return;
-    openFilterKey = null;
-    renderFilters();
+    if(openFilterKey!==null){ openFilterKey = null; renderFilters(); }
+    if(localOpenKey!==null){
+      var hostId = localOpenKey.split(':')[0];
+      localOpenKey = null;
+      if(hostId==='watchFilterBar') renderWatch();
+      else if(hostId==='rawFilterBar') renderRaw();
+    }
   });
+
+  /* 사이드바 스크롤스파이 — 상단 스티키 헤더·필터바 바로 아래 띠에 걸린 섹션을 active로 표시 */
+  (function(){
+    var links = Array.prototype.slice.call(document.querySelectorAll('.sidebar-link'));
+    var linkByHref = {};
+    links.forEach(function(a){ linkByHref[a.getAttribute('href').slice(1)] = a; });
+    var targets = Object.keys(linkByHref).map(function(id){ return document.getElementById(id); }).filter(Boolean);
+    if(!targets.length || !('IntersectionObserver' in window)) return;
+    var visible = {};
+    var io = new IntersectionObserver(function(entries){
+      entries.forEach(function(e){ visible[e.target.id] = e.isIntersecting; });
+      var activeId = null;
+      for(var i=0;i<targets.length;i++){ if(visible[targets[i].id]){ activeId = targets[i].id; break; } }
+      links.forEach(function(a){ a.classList.remove('active'); });
+      if(activeId && linkByHref[activeId]) linkByHref[activeId].classList.add('active');
+    }, { rootMargin: '-180px 0px -70% 0px', threshold: 0 });
+    targets.forEach(function(t){ io.observe(t); });
+  })();
 
   refresh();
   $('loading').style.display='none';
