@@ -9,7 +9,8 @@
       "Bash(python \"C:\\\\Users\\\\User\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--Users-User-Desktop-claude----2026-08-03-26--3\\\\17323ed3-3879-4f44-a5dd-a32dcf822991\\\\scratchpad\\\\inspect.py\")",
       "Bash(mv \"C:\\\\Users\\\\User\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--Users-User-Desktop-claude----2026-08-03-26--3\\\\17323ed3-3879-4f44-a5dd-a32dcf822991\\\\scratchpad\\\\inspect.py\" \"C:\\\\Users\\\\User\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--Users-User-Desktop-claude----2026-08-03-26--3\\\\17323ed3-3879-4f44-a5dd-a32dcf822991\\\\scratchpad\\\\peek_xlsx.py\")",
       "Bash(python \"C:\\\\Users\\\\User\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--Users-User-Desktop-claude----2026-08-03-26--3\\\\17323ed3-3879-4f44-a5dd-a32dcf822991\\\\scratchpad\\\\peek_xlsx.py\")",
-      "Bash(python build_data_thaw.py)"
+      "Bash(python build_data_thaw.py)",
+      "Bash(git push origin main)"
     ]
   }
 }

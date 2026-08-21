@@ -159,7 +159,29 @@ button{font-family:inherit;font-size:inherit;cursor:pointer;border:none;backgrou
 
 /* ---------- 필터 바 ---------- */
 .filters{position:sticky;top:64px;z-index:55;padding:12px 0 12px}
-.filters-inner{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.filters-inner{display:flex;flex-wrap:wrap;gap:8px;align-items:center;
+  max-height:640px;opacity:1;margin-top:0;
+  transition:max-height .25s ease,opacity .2s ease,margin-top .25s ease}
+/* overflow는 CSS 고정값이 아니라 JS(applyFiltersCollapsed)가 토글 애니메이션
+   구간에서만 hidden으로 걸고, 펼쳐진 뒤엔 풀어준다 — 여기 고정으로 hidden을
+   걸면 드롭다운 패널(.fsel-panel, 이 요소의 자식)이 펼쳐질 때 이 박스의 실제
+   콘텐츠 높이(버튼 한 줄)를 넘어가는 부분이 통째로 잘려서 "전체" 체크박스
+   한 줄만 보이는 오류가 났다(사용자 확인 스크린샷). */
+/* v7: 검색 조건 접기/펼치기 — 모바일에서 12개 드롭다운이 여러 줄로 줄바꿈되며
+   sticky로 화면 대부분을 차지해 콘텐츠를 가리는 문제 개선(사용자 확인). "적용된
+   필터" 칩 줄(#activeChips)은 접힌 상태에서도 항상 보이게 둔다 — 지금 뭐가
+   필터링돼 있는지는 스크롤 중에도 놓치면 안 되기 때문. */
+.filters-toggle{display:flex;align-items:center;gap:7px;width:100%;
+  padding:2px 2px 10px;background:none;text-align:left;
+  font-family:var(--font-label);font-size:12.5px;font-weight:700;
+  color:var(--on-surface-variant);border-radius:var(--r-md)}
+.filters-toggle:hover{color:var(--primary)}
+.filters-toggle .material-symbols-outlined{font-size:19px;transition:transform .2s ease}
+.filters-toggle-badge{margin-left:auto;font-size:11px;font-weight:800;color:#fff;
+  background:var(--primary);border-radius:var(--r-full);padding:2px 9px;
+  font-variant-numeric:tabular-nums}
+#filtersCard.collapsed .filters-inner{max-height:0;opacity:0;margin-top:-8px;pointer-events:none;overflow:hidden}
+#filtersCard.collapsed .filters-toggle .material-symbols-outlined{transform:rotate(180deg)}
 .fsel{position:relative}
 .fsel>select{appearance:none;-webkit-appearance:none;font-family:inherit;font-size:12.5px;font-weight:700;
   color:var(--on-surface-variant);background:rgba(255,255,255,.75);border:1px solid rgba(255,255,255,.9);
@@ -470,6 +492,7 @@ footer{padding:34px var(--margin) 46px;text-align:center;font-size:11.5px;
   <div class="sidebar-group">
     <div class="sidebar-group-label">지적사항·해소현황</div>
     <a class="sidebar-link" href="#sec-action"><span class="ico">📋</span>조치계획·해소상태</a>
+    <a class="sidebar-link" href="#sec-priority"><span class="ico">🚑</span>우선관리 스코어 TOP30</a>
   </div>
 
   <div class="sidebar-group">
@@ -508,7 +531,12 @@ footer{padding:34px var(--margin) 46px;text-align:center;font-size:11.5px;
 
 <div class="filters">
   <div class="wrap">
-    <div class="glass" style="padding:12px 16px">
+    <div class="glass" style="padding:12px 16px" id="filtersCard">
+      <button type="button" class="filters-toggle" id="filtersToggleBtn" aria-expanded="true" aria-controls="filterBar">
+        <span class="material-symbols-outlined" id="filtersToggleIco">expand_less</span>
+        <span>검색 조건</span>
+        <span class="filters-toggle-badge" id="filtersToggleBadge" style="display:none"></span>
+      </button>
       <div class="filters-inner" id="filterBar"></div>
       <div class="active-chips" id="activeChips"></div>
     </div>
@@ -718,7 +746,7 @@ footer{padding:34px var(--margin) 46px;text-align:center;font-size:11.5px;
     </section>
 
     <!-- ⑩ 우선관리 스코어 -->
-    <section class="c12">
+    <section class="c12" id="sec-priority">
       <div class="glass card priority">
         <div class="bento-corner"></div>
         <div class="card-hd">
@@ -806,6 +834,22 @@ footer{padding:34px var(--margin) 46px;text-align:center;font-size:11.5px;
       </div>
     </section>
 
+    <!-- v4 추가: 시설주용도(상위) × 경과연수 (v7: 점검방법×경과연수 오른쪽 빈 자리로 이동) -->
+    <section class="c5">
+      <div class="glass card">
+        <div class="card-hd">
+          <div>
+            <h3><span class="material-symbols-outlined">grid_view</span>시설주용도(상위) × 경과연수</h3>
+            <p class="desc">"시설주용도별 위험도 TOP 20"을 노후연수로 한 번 더 쪼갭니다. 같은 연령대라도 용도별로 위험 전환 속도가 다릅니다.</p>
+          </div>
+          <div class="seg" id="fuseAgeMetric"></div>
+        </div>
+        <div class="card-body" id="fuseAgeChart"></div>
+        <div class="legend" id="fuseAgeLegend"></div>
+        <p class="note" id="fuseAgeNote"></p>
+      </div>
+    </section>
+
     <!-- v4 추가: 연면적 × 경과연수 -->
     <section class="c7">
       <div class="glass card">
@@ -819,22 +863,6 @@ footer{padding:34px var(--margin) 46px;text-align:center;font-size:11.5px;
         <div class="card-body" id="areaAgeChart"></div>
         <div class="legend" id="areaAgeLegend"></div>
         <p class="note" id="areaAgeNote"></p>
-      </div>
-    </section>
-
-    <!-- v4 추가: 시설주용도(상위) × 경과연수 -->
-    <section class="c5">
-      <div class="glass card">
-        <div class="card-hd">
-          <div>
-            <h3><span class="material-symbols-outlined">grid_view</span>시설주용도(상위) × 경과연수</h3>
-            <p class="desc">"시설주용도별 위험도 TOP 20"을 노후연수로 한 번 더 쪼갭니다. 같은 연령대라도 용도별로 위험 전환 속도가 다릅니다.</p>
-          </div>
-          <div class="seg" id="fuseAgeMetric"></div>
-        </div>
-        <div class="card-body" id="fuseAgeChart"></div>
-        <div class="legend" id="fuseAgeLegend"></div>
-        <p class="note" id="fuseAgeNote"></p>
       </div>
     </section>
 
@@ -958,6 +986,6 @@ footer{padding:34px var(--margin) 46px;text-align:center;font-size:11.5px;
 <div id="tip" role="tooltip"></div>
 
 <script src="dashboard_data_thaw.js"></script>
-<script src="app_thaw_v6.js"></script>
+<script src="app_thaw_v7.js"></script>
 </body>
 </html>

@@ -690,6 +690,39 @@ function dimSummaryFromSet(set, options){
   return names.length<=2 ? names.join(', ') : names[0]+' 외 '+(names.length-1)+'개';
 }
 
+/* v7: 검색 조건 접기/펼치기 상태 — localStorage에 사용자의 마지막 선택을 저장해
+   재방문 시에도 유지한다(사용자 확인). 저장된 값이 없으면(첫 방문) 화면폭 기준으로
+   기본값을 정한다 — 모바일(≤719px, .kpis 반응형과 같은 기준)은 12개 드롭다운이
+   여러 줄로 접혀 화면 대부분을 가리므로 기본 "접힘", 데스크톱은 기존처럼 "펼침". */
+var FILTERS_COLLAPSE_KEY = 'thawDashboard_filtersCollapsed';
+function loadFiltersCollapsed(){
+  try {
+    var v = localStorage.getItem(FILTERS_COLLAPSE_KEY);
+    if(v==='1') return true;
+    if(v==='0') return false;
+  } catch(e){}
+  return window.innerWidth <= 719;
+}
+function saveFiltersCollapsed(v){
+  try { localStorage.setItem(FILTERS_COLLAPSE_KEY, v?'1':'0'); } catch(e){}
+}
+var filtersCollapsed = loadFiltersCollapsed();
+/* overflow:hidden은 접힘/펼침 애니메이션 구간에서만 걸어야 한다 — 펼쳐진 채로
+   고정해두면 그 안의 드롭다운 패널(.fsel-panel)이 이 박스의 실제 콘텐츠 높이를
+   넘어가는 순간 통째로 잘린다(사용자 확인 버그: "전체" 체크박스 한 줄만 보임).
+   그래서 펼치기 애니메이션이 끝난 뒤에만 overflow를 풀어준다. */
+function applyFiltersCollapsed(initial){
+  var card = $('filtersCard'), btn = $('filtersToggleBtn'), inner = $('filterBar');
+  if(!card || !btn) return;
+  card.classList.toggle('collapsed', filtersCollapsed);
+  btn.setAttribute('aria-expanded', String(!filtersCollapsed));
+  if(!inner) return;
+  if(initial){ inner.style.overflow = filtersCollapsed ? 'hidden' : ''; return; }
+  inner.style.overflow = 'hidden';
+  clearTimeout(inner._ovTimer);
+  if(!filtersCollapsed) inner._ovTimer = setTimeout(function(){ inner.style.overflow = ''; }, 300);
+}
+
 function renderFilters(){
   var bar = $('filterBar'); bar.innerHTML = '';
   FILTER_DEFS.forEach(function(d){
@@ -714,6 +747,13 @@ function renderFilters(){
     bar.appendChild(b);
   }
   renderChips();
+
+  var badge = $('filtersToggleBadge');
+  if(badge){
+    var n = $('activeChips').children.length;
+    if(n>0){ badge.textContent = n+'개 적용중'; badge.style.display=''; }
+    else{ badge.style.display='none'; }
+  }
 }
 
 var FLAG_LABELS = {};
@@ -3283,6 +3323,13 @@ function init(){
   $('btnCsvRaw').onclick = exportRaw;
   $('btnCsvFind').onclick = exportFind;
   $('btnPrint').onclick = function(){ window.print(); };
+
+  applyFiltersCollapsed(true);
+  $('filtersToggleBtn').onclick = function(){
+    filtersCollapsed = !filtersCollapsed;
+    saveFiltersCollapsed(filtersCollapsed);
+    applyFiltersCollapsed();
+  };
 
   var si=$('watchSearch'), timer=null;
   si.oninput = function(){
