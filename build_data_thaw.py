@@ -419,6 +419,7 @@ def main():
             row.estab_f, row.학교기관종류, row.점검방법, row.운용상태,
             row.지역, row.학교기관구분, row.fatvulnType, row.action, row.resolve,
             row.fuse_f, row.areab, row.stu, row.resolveNoObs, int(row.fv_bits),
+            row.시설코드,
         ])
 
     def watch_key(r):
@@ -483,6 +484,7 @@ def main():
         "fv": b64_u8(fac["fv_count"].tolist()),
         "fvBits": b64_u8(fac["fv_bits"].tolist()),
         "height10": b64_u16(fac["height10"].tolist()),
+        "facCode": fac["시설코드"].tolist(),
         "watch": watch,
         "official": official,
         "finding": finding,

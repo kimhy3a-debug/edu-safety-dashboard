@@ -107,6 +107,13 @@ Object.keys(FIND_DICT).forEach(function(k){ FIND_COL[k] = b64bytes(D.finding[k])
    시설유형(ftype)에만 값이 있고, 그 외(건물 등)는 0이다(build_data_thaw.py 참고). */
 var HEIGHT10 = decodeCol(D.height10, true);
 
+/* v9 추가: 시설코드 — 시설 단위 고유 식별자(예: BD0000053401). 사전(DICT) 인코딩
+   방식은 값이 105,835개 전부 서로 달라(=압축 이득이 없고, WIDE 2바이트 인덱스가
+   담을 수 있는 65,536개 한도도 넘어) 맞지 않는다. FIND_CONTENT/FIND_DETAIL와
+   같은 방식으로 그냥 문자열 배열째로 싣는다 — FAC_CODE[i]가 그 시설의 코드다.
+   즉시조치 워치리스트 행에도 맨 끝에 같은 값을 실어 뒀다(W_CODE). */
+var FAC_CODE = D.facCode;
+
 /* v4 추가: "시설주용도별 위험도 TOP20"·"교육기본지원시설 위험도 비교" 카드용.
    TIER: 학교급 대분류(0=17개 시도교육청 등/1=대학·전문대학·대학원 계열) — 여름철
    라운드(index_8_12_v4.html/build_data.py)와 동일한 파생 로직을 그대로 이식했다.
@@ -196,6 +203,28 @@ function gradeMap(dim){
 }
 var CURG = gradeMap('cur'), PREVG = gradeMap('prev');
 
+/* v9 추가: "전차→금차 등급전이" 카드 하단 배지(하락/개선/신규/미기재/유지)를 클릭하면
+   그 카테고리 전체로 대시보드를 좁힐 수 있게 한다(요청사항 — 매트릭스 개별 칸
+   클릭(F.trans)과 같은 자리에, 칸을 가로지르는 카테고리 단위 필터를 추가). renderTrans()가
+   칸 하나하나에 쓰는 것과 정확히 같은 분류 규칙을 여기 한 곳에만 두고 재사용해서,
+   배지 숫자·필터링 결과·매트릭스 색칠이 절대 어긋나지 않게 한다. */
+var TRANSCAT_DROP=0, TRANSCAT_IMPROVE=1, TRANSCAT_NEW=2, TRANSCAT_MISS=3, TRANSCAT_STAY=4;
+var TRANSCAT_LABELS = ['하락','개선','신규','미기재','유지'];
+function transCatOf(prevLabel, curLabel){
+  var pr = GRADES.indexOf(prevLabel), cr = GRADES.indexOf(curLabel);
+  if(prevLabel==='미지정' && cr>=0) return TRANSCAT_NEW;
+  if(curLabel==='(미기재)') return TRANSCAT_MISS;
+  if(pr>=0 && cr>=0){
+    if(cr>pr) return TRANSCAT_DROP;
+    if(cr<pr) return TRANSCAT_IMPROVE;
+  }
+  return TRANSCAT_STAY;
+}
+var TRANSCAT = new Uint8Array(N);
+for(var _tc=0; _tc<N; _tc++){
+  TRANSCAT[_tc] = transCatOf(DICT.prev[COL.prev[_tc]], DICT.cur[COL.cur[_tc]]);
+}
+
 var AGE = new Uint8Array(N);
 for(var _i=0;_i<N;_i++){
   var _y = YR[_i];
@@ -278,7 +307,7 @@ var FILTER_DEFS = [
    직접 비트 검사한다. */
 /* stuTier: "교육기본지원시설 위험도 비교" 카드 전용 원-오프 필터. [stuIdx, tierVal]
    쌍을 담는다(예: [교육기본지원시설, 대학계열]) — F.trans/F.cross와 동일 패턴. */
-var F = { dim:{}, age:null, flag:null, trans:null, cross:null, dimAge:null, resNoObsUn:null, fvBit:null, stuTier:null };
+var F = { dim:{}, age:null, flag:null, trans:null, transCat:null, cross:null, dimAge:null, resNoObsUn:null, fvBit:null, stuTier:null };
 FILTER_DEFS.forEach(function(d){ F.dim[d.key] = null; });
 
 function dimHas(key, idx){ var s=F.dim[key]; return !!s && s.has(idx); }
@@ -322,7 +351,7 @@ function buildMask(){
   });
   var nk = dimCols.length;
   var ageLut = F.age ? setToLookup(F.age, 7) : null;
-  var flag = F.flag, tr = F.trans, cr = F.cross, da = F.dimAge, ru = F.resNoObsUn, fvb = F.fvBit, st = F.stuTier;
+  var flag = F.flag, tr = F.trans, tc = F.transCat, cr = F.cross, da = F.dimAge, ru = F.resNoObsUn, fvb = F.fvBit, st = F.stuTier;
   var colLevel = COL.level, colEstab = COL.estab, colResolveNoObs = COL.resolveNoObs;
   var daCol = da ? COL[da[0]] : null;
   for(var i=0;i<N;i++){
@@ -331,6 +360,7 @@ function buildMask(){
     if(ok && ageLut && !ageLut[AGE[i]]) ok=0;
     if(ok && flag!==null && !(FLAG[i]&flag)) ok=0;
     if(ok && tr && (COL.prev[i]!==tr[0] || COL.cur[i]!==tr[1])) ok=0;
+    if(ok && tc!==null && TRANSCAT[i]!==tc) ok=0;
     if(ok && cr && (colLevel[i]!==cr[0] || colEstab[i]!==cr[1])) ok=0;
     if(ok && da && (daCol[i]!==da[1] || AGE[i]!==da[2])) ok=0;
     if(ok && ru && colResolveNoObs[i]!==RESOLVE_NOOBS_UN) ok=0;
@@ -739,7 +769,7 @@ function renderFilters(){
     function(v){ F.age = v; });
 
   var any = FILTER_DEFS.some(function(d){ return !!F.dim[d.key]; }) ||
-            F.age || F.flag!==null || F.trans || F.cross || F.dimAge || F.resNoObsUn || F.fvBit || F.stuTier;
+            F.age || F.flag!==null || F.trans || F.transCat!==null || F.cross || F.dimAge || F.resNoObsUn || F.fvBit || F.stuTier;
   if(any){
     var b = document.createElement('button');
     b.className='btn'; b.textContent='필터 초기화';
@@ -788,6 +818,7 @@ function renderChips(){
   }
   if(F.flag!==null) chip('정합성', FLAG_LABELS[F.flag]||'—', function(){ F.flag=null; });
   if(F.trans) chip('등급 전이', DICT.prev[F.trans[0]]+' → '+DICT.cur[F.trans[1]], function(){ F.trans=null; });
+  if(F.transCat!==null) chip('등급 전이 구분', TRANSCAT_LABELS[F.transCat], function(){ F.transCat=null; });
   if(F.cross) chip('유형×설립', DICT.level[F.cross[0]]+' · '+DICT.estab[F.cross[1]], function(){ F.cross=null; });
   if(F.dimAge) chip(DIMAGE_LABELS[F.dimAge[0]]+'×경과연수',
     DICT[F.dimAge[0]][F.dimAge[1]]+' · '+AGE_LABELS[F.dimAge[2]], function(){ F.dimAge=null; });
@@ -804,7 +835,7 @@ function renderChips(){
 
 function resetAll(){
   FILTER_DEFS.forEach(function(d){ F.dim[d.key]=null; });
-  F.age=null; F.flag=null; F.trans=null; F.cross=null; F.dimAge=null; F.resNoObsUn=null; F.fvBit=null; F.stuTier=null;
+  F.age=null; F.flag=null; F.trans=null; F.transCat=null; F.cross=null; F.dimAge=null; F.resNoObsUn=null; F.fvBit=null; F.stuTier=null;
   openFilterKey=null;
   watchPage=1; rawPage=1; refresh();
 }
@@ -996,17 +1027,47 @@ function renderSido(R){
     var n=B.n[i], cde=B.cde[i], ji=B.ji[i], g=B.g.subarray(i*6,i*6+6);
     var r = document.createElement('div'); r.className='row'+(dimHas('sido',i)?' on':'');
     r.style.cssText=GRID; r.tabIndex=0;
-    var nm = document.createElement('div'); nm.className='row-name'; nm.textContent=DICT.sido[i];
     var st = stackEl(g,n);
     var c1 = document.createElement('div'); c1.className='num strong'; c1.textContent=fmt(n);
     var c2 = document.createElement('div'); c2.className='num'; c2.textContent=pctS(cde,n,1);
-    if(cde/n > avgCde*1.5 && n>=30) c2.style.color='var(--risk-5)', c2.style.fontWeight='800';
+    var isHigh = cde/n > avgCde*1.5;
+    /* v9 수정: 표본이 작으면(n<50) 강조 표시(빨강+볼드)를 안 준다 — "재해취약시설
+       유형별 안전등급"·"여름철리스크"·"시설주용도별 위험도 TOP20" 등 다른 카드들이
+       이미 쓰는 것과 똑같은 n<50 기준·"표본 X건 · 해석 주의" 태그로 통일했다(사용자
+       확인 — 처음엔 이 카드만 n<30·작은 첨자였는데 스타일이 달라 헷갈린다는 피드백).
+       06_대전(5건, 80%)처럼 값이 아무리 높아도 표본이 작으면 태그만 붙고 강조는 안
+       된다. v9 후속 수정 2번: 이 태그를 "금차등급 구성" 칸의 막대 옆에 붙였더니
+       막대 너비가 줄어들었다 — 막대는 모든 행이 항상 같은 크기여야 한다는 피드백.
+       "시도교육청" 칸(1.35fr)은 "06_대전" 같은 짧은 이름 뒤로 남는 공간이 이미
+       있으므로, 막대는 손대지 않고 그 이름 칸 안 남는 공간에 태그를 붙인다. */
+    var small = n<50;
+    if(isHigh && !small){
+      c2.style.color='var(--risk-5)'; c2.style.fontWeight='800';
+    }
+    var nm = document.createElement('div'); nm.className='row-name';
+    /* flex-wrap:wrap + 이름/태그 둘 다 flex:none — 이름은 절대 안 줄어들게 고정하고,
+       좁은 화면이라 태그까지 한 줄에 안 들어가면 태그만 다음 줄로 내려가게 한다
+       (이름이 잘리는 것보다 태그가 줄바꿈되는 게 낫다). */
+    nm.style.cssText='display:flex;align-items:center;gap:6px;flex-wrap:wrap;min-width:0';
+    var nmText = document.createElement('span');
+    nmText.style.cssText='white-space:nowrap;flex:none';
+    nmText.textContent = DICT.sido[i];
+    nm.appendChild(nmText);
+    if(small){
+      var tagEl = document.createElement('span'); tagEl.className='tag';
+      tagEl.style.cssText='background:rgba(118,117,134,.16);color:var(--on-surface-variant);'+
+        'white-space:nowrap;flex:none';
+      tagEl.textContent='표본 '+fmt(n)+'건 · 해석 주의';
+      nm.appendChild(tagEl);
+    }
     var c3 = document.createElement('div'); c3.className='num'; c3.textContent=pctS(ji,n,2);
     r.appendChild(nm); r.appendChild(st); r.appendChild(c1); r.appendChild(c2); r.appendChild(c3);
     bindTip(r, function(){
       return '<b>'+esc(DICT.sido[i])+'</b><hr>'+
         tipRow('점검 시설', fmt(n)) + tipRow('C등급 이하', fmt(cde)+' ('+pctS(cde,n,2)+')') +
-        tipRow('지적사항', fmt(ji)+'건') + '<hr>' + gradeTip(g,n);
+        tipRow('지적사항', fmt(ji)+'건') + '<hr>' + gradeTip(g,n) +
+        (small ? '<div style="margin-top:5px;color:var(--on-surface-variant);opacity:.85">'+
+          '⚠ 표본이 50건 미만이라 강조 표시(빨강·볼드)에서는 제외했습니다.</div>' : '');
     });
     r.onclick = function(){ dimSetSingle('sido',i); F.dim.office=null; F.dim.region=null; refresh(); };
     r.onkeydown = function(e){ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); r.onclick(); } };
@@ -1046,19 +1107,17 @@ function renderTrans(R){
   P.forEach(function(p){ C.forEach(function(c){ var v=R.trans[p[0]*nCur+c[0]]; if(v>max) max=v; }); });
   var lmax = Math.log(max+1) || 1;
 
-  var brandNew=0, missCount=0;
+  var catCounts = [0,0,0,0,0];   // TRANSCAT_DROP..STAY 순서, transCatOf()와 동일 기준으로 배지·칸 색칠 일치시킴
   P.forEach(function(p){
     var lbl=document.createElement('div'); lbl.className='hm-lbl';
     lbl.textContent = p[1].replace('등급','').replace('(미기재)','미기재'); grid.appendChild(lbl);
-    var pr = GRADES.indexOf(p[1]);
     C.forEach(function(c){
       var v = R.trans[p[0]*nCur+c[0]];
-      var cr = GRADES.indexOf(c[1]);
+      var cat = transCatOf(p[1], c[1]);
+      var isNew = cat===TRANSCAT_NEW, isMiss = cat===TRANSCAT_MISS;
+      var dir = cat===TRANSCAT_DROP ? 1 : cat===TRANSCAT_IMPROVE ? -1 : 0;
+      catCounts[cat] += v;
       var cell=document.createElement('div'); cell.className='hm-cell';
-      var isNew = (p[1]==='미지정' && cr>=0);   // 전차 등급 미지정(신규 편입) → 금차 등급 부여
-      var isMiss = (c[1]==='(미기재)');          // 금차등급 자체가 미기재 — 전이 방향 판단 불가
-      var dir = (isNew||isMiss) ? 0 : (pr>=0&&cr>=0) ? (cr>pr?1:(cr<pr?-1:0)) : 0;
-      if(v>0){ if(isNew) brandNew+=v; else if(isMiss) missCount+=v; }
       var bg = NEUTRAL, ink='var(--on-surface-variant)';
       if(v>0){
         var t = Math.log(v+1)/lmax;
@@ -1083,6 +1142,7 @@ function renderTrans(R){
       });
       if(v) cell.onclick=function(){
         F.trans = (F.trans && F.trans[0]===p[0] && F.trans[1]===c[0]) ? null : [p[0],c[0]];
+        F.transCat = null;
         watchPage=1; rawPage=1; refresh();
       };
       grid.appendChild(cell);
@@ -1090,17 +1150,35 @@ function renderTrans(R){
   });
   host.appendChild(grid);
 
+  /* v9 추가: 배지(하락/개선/신규/미기재/유지)를 클릭하면 그 카테고리 전체로 필터링한다
+     (요청사항 — 개별 칸 클릭과 같은 자리에, 매트릭스를 가로지르는 카테고리 필터). 위
+     칸들을 색칠하며 이미 센 catCounts를 그대로 써서 배지 숫자와 필터링 결과가
+     항상 일치한다. */
   var mv = document.createElement('div');
   mv.style.cssText='display:flex;gap:10px;margin-top:16px;flex-wrap:wrap';
-  [['하락',R.dropped,'var(--g-d)'],['개선',R.improved,'var(--g-a)'],
-   ['신규',brandNew,'#2563eb'],
-   ['미기재',missCount,'#e0a416'],
-   ['유지',R.total-R.dropped-R.improved-brandNew-missCount,'var(--outline)']].forEach(function(m){
-    mv.innerHTML += '<div style="flex:1 1 84px;padding:10px 12px;border-radius:12px;'+
-      'background:rgba(255,255,255,.6);border:1px solid rgba(255,255,255,.9)">'+
-      '<div style="font-family:var(--font-label);font-size:10px;font-weight:600;letter-spacing:.05em;'+
+  [['하락',TRANSCAT_DROP,'var(--g-d)'],['개선',TRANSCAT_IMPROVE,'var(--g-a)'],
+   ['신규',TRANSCAT_NEW,'#2563eb'],
+   ['미기재',TRANSCAT_MISS,'#e0a416'],
+   ['유지',TRANSCAT_STAY,'var(--outline)']].forEach(function(m){
+    var cnt = catCounts[m[1]];
+    var b = document.createElement('button'); b.type='button';
+    var on = F.transCat===m[1];
+    b.style.cssText='flex:1 1 84px;text-align:left;padding:10px 12px;border-radius:12px;cursor:pointer;'+
+      'background:rgba(255,255,255,.6);border:1px solid rgba(255,255,255,.9);transition:.12s'+
+      (on ? ';box-shadow:inset 0 0 0 2px '+m[2]+';background:#fff' : '');
+    b.innerHTML = '<div style="font-family:var(--font-label);font-size:10px;font-weight:600;letter-spacing:.05em;'+
       'text-transform:uppercase;color:var(--on-surface-variant)">'+m[0]+'</div>'+
-      '<div style="font-size:19px;font-weight:800;color:'+m[2]+';font-variant-numeric:tabular-nums">'+fmt(m[1])+'</div></div>';
+      '<div style="font-size:19px;font-weight:800;color:'+m[2]+';font-variant-numeric:tabular-nums">'+fmt(cnt)+'</div>';
+    if(cnt>0){
+      b.onclick=function(){
+        F.transCat = (F.transCat===m[1]) ? null : m[1];
+        F.trans = null;
+        watchPage=1; rawPage=1; refresh();
+      };
+    } else {
+      b.style.cursor='default'; b.style.opacity='.55';
+    }
+    mv.appendChild(b);
   });
   host.appendChild(mv);
 
@@ -2457,11 +2535,11 @@ function renderFuseAge(R){
    21. 렌더 — ⑱ 워치리스트(즉시조치 검토 대상)
    watch 행: [sido,office,school,fac,ftype,struct,year,prev,cur,ji,reason,period,
               estab,level,method,opstat,region,kind,fatvulnType,action,resolve,
-              fuse,areab,stu,resolveNoObs,fvBits]
+              fuse,areab,stu,resolveNoObs,fvBits,code]
    ══════════════════════════════════════════════════════════════ */
 var W_SIDO=0,W_OFFICE=1,W_SCHOOL=2,W_FAC=3,W_FTYPE=4,W_STRUCT=5,W_YEAR=6,W_PREV=7,W_CUR=8,W_JI=9,W_RSN=10,
     W_PERIOD=11,W_ESTAB=12,W_LEVEL=13,W_METHOD=14,W_OPSTAT=15,W_REGION=16,W_KIND=17,W_FV=18,W_ACTION=19,W_RESOLVE=20,
-    W_FUSE=21,W_AREAB=22,W_STU=23,W_RESOLVENOOBS=24,W_FVBITS=25;
+    W_FUSE=21,W_AREAB=22,W_STU=23,W_RESOLVENOOBS=24,W_FVBITS=25,W_CODE=26;
 
 /* v7 버그 수정: 위 79행 부근의 "해당없음"→"지적사항없음" 라벨 교체는 DICT.resolve/
    DICT.action(사전 인덱스 기반)만 바꿨는데, 즉시조치 워치리스트(D.watch)는 그 사전을
@@ -2602,6 +2680,7 @@ var WATCH_COLS = [
   {t:'설립구분',   k:W_ESTAB, w:'76px'},
   {t:'학교·기관명', k:W_SCHOOL,w:'160px'},
   {t:'시설명',     k:W_FAC,   w:'150px'},
+  {t:'시설코드',   k:W_CODE,  w:'110px'},
   {t:'주용도',     k:W_FUSE,  w:'96px'},
   {t:'승인연도',   k:W_YEAR,  w:'70px',  num:true},
   {t:'전차 → 금차', k:W_CUR,  w:'110px'},
@@ -2663,6 +2742,7 @@ function watchRows(exceptKey){
     if(F.cross && (r[W_LEVEL]!==DICT.level[F.cross[0]] ||
                    r[W_ESTAB]!==DICT.estab[F.cross[1]])) continue;
     if(F.trans && (r[W_PREV]!==DICT.prev[F.trans[0]] || r[W_CUR]!==DICT.cur[F.trans[1]])) continue;
+    if(F.transCat!==null && transCatOf(r[W_PREV], r[W_CUR])!==F.transCat) continue;
     if(F.dimAge && (r[DIMAGE_WATCH_FIELD[F.dimAge[0]]]!==DICT[F.dimAge[0]][F.dimAge[1]] ||
                     watchAgeBucket(r)!==F.dimAge[2])) continue;
     /* v5 버그 수정: "지적사항 해소상태 — 시도별" 카드 행 클릭 시 걸리는 F.resNoObsUn
@@ -2691,7 +2771,7 @@ function watchRows(exceptKey){
     if(exceptKey!=='resolve' && watchFilter.resolve && !watchFilter.resolve.has(watchFieldGetter(r,'resolve'))) continue;
     if(exceptKey!=='dropped' && watchFilter.dropped && !watchFilter.dropped.has(watchFieldGetter(r,'dropped'))) continue;
     if(exceptKey!=='hasJi'   && watchFilter.hasJi   && !watchFilter.hasJi.has(watchFieldGetter(r,'hasJi'))) continue;
-    if(q && (r[W_SCHOOL]+' '+r[W_FAC]+' '+r[W_SIDO]+' '+r[W_OFFICE]).toLowerCase().indexOf(q)<0) continue;
+    if(q && (r[W_SCHOOL]+' '+r[W_FAC]+' '+r[W_SIDO]+' '+r[W_OFFICE]+' '+r[W_CODE]).toLowerCase().indexOf(q)<0) continue;
     out.push(r);
   }
   var k=watchSort.k, dir=watchSort.dir;
@@ -2778,6 +2858,7 @@ function renderWatch(){
         '<td style="color:var(--on-surface-variant)">'+esc(r[W_ESTAB])+'</td>'+
         '<td style="font-weight:700">'+esc(r[W_SCHOOL])+'</td>'+
         '<td>'+esc(r[W_FAC])+'</td>'+
+        '<td style="color:var(--on-surface-variant);font-variant-numeric:tabular-nums">'+esc(r[W_CODE])+'</td>'+
         '<td style="color:var(--on-surface-variant)">'+esc(r[W_FUSE])+'</td>'+
         '<td class="n" style="text-align:center">'+esc(r[W_YEAR]||'—')+'</td>'+
         '<td>'+gradeChip(r[W_PREV])+'<span class="arrow">→</span>'+gradeChip(r[W_CUR])+'</td>'+
@@ -2833,6 +2914,7 @@ var RAW_COLS = [
   {k:'estab',  t:'설립구분',     w:'70px'},
   {k:'school', t:'학교·기관명',  w:'150px'},
   {k:'fac',    t:'시설명',       w:'150px'},
+  {k:'code',   t:'시설코드',     w:'110px'},
   {k:'fuse',   t:'주용도',       w:'96px'},
   {k:'struct', t:'구조',         w:'110px'},
   {k:'year',   t:'승인연도',     w:'68px',  num:true},
@@ -2873,6 +2955,7 @@ function rawField(i, k){
     case 'estab':  return DICT.estab[COL.estab[i]];
     case 'school': return DICT.school[COL.school[i]];
     case 'fac':    return DICT.fac[COL.fac[i]];
+    case 'code':   return FAC_CODE[i];
     case 'fuse':   return DICT.fuse[COL.fuse[i]];
     case 'struct': return DICT.struct[COL.struct[i]];
     case 'ftype':  return DICT.ftype[COL.ftype[i]];
@@ -2921,7 +3004,7 @@ function rawRows(exceptKey){
     if(exceptKey!=='dropped' && rawFilter.dropped && !rawFilter.dropped.has(rawFieldGetter(i,'dropped'))) continue;
     if(exceptKey!=='hasJi'   && rawFilter.hasJi   && !rawFilter.hasJi.has(rawFieldGetter(i,'hasJi'))) continue;
     if(q){
-      var hay = (rawField(i,'school')+' '+rawField(i,'fac')+' '+rawField(i,'sido')+' '+rawField(i,'office')).toLowerCase();
+      var hay = (rawField(i,'school')+' '+rawField(i,'fac')+' '+rawField(i,'sido')+' '+rawField(i,'office')+' '+rawField(i,'code')).toLowerCase();
       if(hay.indexOf(q)<0) continue;
     }
     out.push(i);
@@ -2973,6 +3056,7 @@ function renderRaw(){
         '<td style="color:var(--on-surface-variant)">'+esc(rawField(i,'estab'))+'</td>'+
         '<td style="font-weight:700">'+esc(rawField(i,'school'))+'</td>'+
         '<td>'+esc(rawField(i,'fac'))+'</td>'+
+        '<td style="color:var(--on-surface-variant);font-variant-numeric:tabular-nums">'+esc(rawField(i,'code'))+'</td>'+
         '<td style="color:var(--on-surface-variant)">'+esc(rawField(i,'fuse'))+'</td>'+
         '<td style="color:var(--on-surface-variant)">'+esc(rawField(i,'struct'))+'</td>'+
         '<td class="n" style="text-align:center">'+esc(rawField(i,'year')||'—')+'</td>'+
@@ -3008,6 +3092,7 @@ function renderRaw(){
   if(F.age && F.age.size) scope.push(Array.from(F.age).map(function(i){ return AGE_LABELS[i]; }).join(', '));
   if(F.flag!==null) scope.push(FLAG_LABELS[F.flag]||'정합성 조건');
   if(F.trans) scope.push(DICT.prev[F.trans[0]]+'→'+DICT.cur[F.trans[1]]);
+  if(F.transCat!==null) scope.push('등급전이 '+TRANSCAT_LABELS[F.transCat]);
   if(F.cross) scope.push(DICT.level[F.cross[0]]+'·'+DICT.estab[F.cross[1]]);
   if(F.dimAge) scope.push(DICT[F.dimAge[0]][F.dimAge[1]]+'×'+AGE_LABELS[F.dimAge[2]]);
   if(F.fvBit){ var fvDefR = FV_ICON_DEFS.filter(function(d){ return d[0]===F.fvBit; })[0]; if(fvDefR) scope.push('재해취약유형 '+fvDefR[1]); }
@@ -3036,12 +3121,12 @@ function stamp(){ var d=new Date();
 
 function exportWatch(){
   var rows = watchRows();
-  var head = ['시도교육청','교육지원청','학교·기관명','시설명','시설유형','시설구조',
+  var head = ['시도교육청','교육지원청','학교·기관명','시설명','시설코드','시설유형','시설구조',
               '사용승인연도','전차안전등급','금차안전등급','지적사항수','재해취약유형','해소상태',
               '선정사유','안전점검기간','설립구분','학교·기관 유형','점검방법','운용상태','지역','학교/기관',
               '시설주용도','연면적구간','교육기본지원시설'];
   var body = rows.map(function(r){ return [
-    r[W_SIDO],r[W_OFFICE],r[W_SCHOOL],r[W_FAC],r[W_FTYPE],r[W_STRUCT],r[W_YEAR],r[W_PREV],r[W_CUR],r[W_JI],
+    r[W_SIDO],r[W_OFFICE],r[W_SCHOOL],r[W_FAC],r[W_CODE],r[W_FTYPE],r[W_STRUCT],r[W_YEAR],r[W_PREV],r[W_CUR],r[W_JI],
     r[W_FV],r[W_RESOLVE],r[W_RSN],r[W_PERIOD],r[W_ESTAB],r[W_LEVEL],r[W_METHOD],r[W_OPSTAT],r[W_REGION],r[W_KIND],
     r[W_FUSE],r[W_AREAB],r[W_STU]
   ].map(csvCell).join(','); });
@@ -3050,13 +3135,13 @@ function exportWatch(){
 
 function exportRaw(){
   var rows = rawRows();
-  var head = ['시도교육청','교육지원청','학교·기관 유형','설립구분','학교·기관명','시설명',
+  var head = ['시도교육청','교육지원청','학교·기관 유형','설립구분','학교·기관명','시설명','시설코드',
               '시설주용도','시설유형','시설구조','사용승인연도','점검방법','전차안전등급','금차안전등급',
               '지적사항수','재해취약유형','해소상태','안전점검기간','운용상태'];
   var body = rows.map(function(i){
     return [
       rawField(i,'sido'), rawField(i,'office'), DICT.level[COL.level[i]], DICT.estab[COL.estab[i]],
-      rawField(i,'school'), rawField(i,'fac'), rawField(i,'fuse'), rawField(i,'ftype'), rawField(i,'struct'),
+      rawField(i,'school'), rawField(i,'fac'), rawField(i,'code'), rawField(i,'fuse'), rawField(i,'ftype'), rawField(i,'struct'),
       rawField(i,'year')||'', rawField(i,'method'),
       rawField(i,'prev'), rawField(i,'cur'), JI[i], rawField(i,'fatvulnType'), rawField(i,'resolve'),
       rawField(i,'period'), DICT.opstat[COL.opstat[i]]
@@ -3080,15 +3165,24 @@ var findPage=1, findQuery='';
    요청사항: 조치계획구분·해소상태는 반드시 포함. null=전체, Set=선택된 값만
    (watchFilter/rawFilter와 동일한 컨벤션). */
 var findFilter = {inspType:null, cat1:null, action:null, resolve:null, _open:null};
+/* v9 추가: "지적사항 확인" 표에 시도교육청·교육지원청·학교급·설립구분 4개 열이
+   빠져 있어 이 표만 보고는 지적사항이 어느 지역·기관 소속인지 알 수 없었다
+   (요청사항 — 참고 이미지). rawField(i,...)로 이미 계산돼 있는 시설 단위 값을
+   그대로 가져와 열만 추가한다(새 데이터 불필요). 시설코드도 같이 추가. */
 var FIND_COLS = [
+  {t:'시도교육청',     w:'104px'},
+  {t:'교육지원청',     w:'110px'},
+  {t:'학교급',         w:'88px'},
+  {t:'설립구분',       w:'70px'},
   {t:'학교·기관명',   w:'150px'},
   {t:'시설명',         w:'130px'},
+  {t:'시설코드',       w:'110px'},
   {t:'안전점검구분',   w:'92px'},
   {t:'분류',           w:'120px'},
   {t:'지적사항 내용',  w:'260px'},
   {t:'조치계획',       w:'110px'},
   {t:'해소상태',       w:'76px'},
-  {t:'최종수정일',     w:'86px'}
+  {t:'최종수정일',     w:'96px'}
 ];
 function findActionChip(label){
   var k = ACTION_ORDER.indexOf(label);
@@ -3109,7 +3203,8 @@ function findRows(exceptKey){
     var s = FIND_START[i];
     for(var k=0;k<c;k++){
       var j = s+k, r = {i:i, j:j};
-      if(q && FIND_CONTENT[j].toLowerCase().indexOf(q)<0 && FIND_DETAIL[j].toLowerCase().indexOf(q)<0) continue;
+      if(q && FIND_CONTENT[j].toLowerCase().indexOf(q)<0 && FIND_DETAIL[j].toLowerCase().indexOf(q)<0 &&
+         String(FAC_CODE[i]).toLowerCase().indexOf(q)<0) continue;
       if(exceptKey!=='inspType' && findFilter.inspType && !findFilter.inspType.has(findFieldGetter(r,'inspType'))) continue;
       if(exceptKey!=='cat1'     && findFilter.cat1     && !findFilter.cat1.has(findFieldGetter(r,'cat1'))) continue;
       if(exceptKey!=='action'   && findFilter.action   && !findFilter.action.has(findFieldGetter(r,'action'))) continue;
@@ -3162,8 +3257,13 @@ function renderFind(){
       var i=r.i, j=r.j;
       var detail = FIND_DETAIL[j];
       return '<tr>'+
+        '<td>'+esc(rawField(i,'sido'))+'</td>'+
+        '<td style="color:var(--on-surface-variant)">'+esc(rawField(i,'office'))+'</td>'+
+        '<td style="color:var(--on-surface-variant)">'+esc(rawField(i,'level'))+'</td>'+
+        '<td style="color:var(--on-surface-variant)">'+esc(rawField(i,'estab'))+'</td>'+
         '<td style="font-weight:700">'+esc(rawField(i,'school'))+'</td>'+
         '<td>'+esc(rawField(i,'fac'))+'</td>'+
+        '<td style="color:var(--on-surface-variant);font-variant-numeric:tabular-nums">'+esc(rawField(i,'code'))+'</td>'+
         '<td style="color:var(--on-surface-variant)">'+esc(findLabel('findInspType',j))+'</td>'+
         '<td style="color:var(--on-surface-variant)">'+esc(findLabel('findCat1',j))+'</td>'+
         '<td>'+esc(FIND_CONTENT[j])+
@@ -3171,7 +3271,7 @@ function renderFind(){
         '</td>'+
         '<td>'+findActionChip(findLabel('findAction',j))+'</td>'+
         '<td>'+resolveChip(findLabel('findResolve',j))+'</td>'+
-        '<td class="n" style="text-align:center;color:var(--on-surface-variant)">'+esc(findLabel('findDate',j))+'</td></tr>';
+        '<td class="n" style="text-align:center;color:var(--on-surface-variant);white-space:nowrap">'+esc(findLabel('findDate',j))+'</td></tr>';
     }).join('');
   }
 
@@ -3195,11 +3295,13 @@ function renderFind(){
 }
 function exportFind(){
   var rows = findRows();
-  var head = ['학교·기관명','시설명','안전점검구분','분류','지적사항 내용','불량내역','조치계획','해소상태','작성상태','최종수정일'];
+  var head = ['시도교육청','교육지원청','학교급','설립구분','학교·기관명','시설명','시설코드',
+              '안전점검구분','분류','지적사항 내용','불량내역','조치계획','해소상태','작성상태','최종수정일'];
   var body = rows.map(function(r){
     var i=r.i, j=r.j;
     return [
-      rawField(i,'school'), rawField(i,'fac'), findLabel('findInspType',j), findLabel('findCat1',j),
+      rawField(i,'sido'), rawField(i,'office'), rawField(i,'level'), rawField(i,'estab'),
+      rawField(i,'school'), rawField(i,'fac'), rawField(i,'code'), findLabel('findInspType',j), findLabel('findCat1',j),
       FIND_CONTENT[j], FIND_DETAIL[j], findLabel('findAction',j), findLabel('findResolve',j),
       findLabel('findWritten',j), findLabel('findDate',j)
     ].map(csvCell).join(',');
