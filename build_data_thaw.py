@@ -354,6 +354,13 @@ def main():
     #    시설 i의 지적사항은 findStart[i] .. findStart[i]+findCount[i]-1
     #    구간의 finding* 배열이다(지적사항이 없는 시설은 findCount=0).
     # ================================================================
+    # v10: 학교/기관코드 사전 인코딩(시설 순서와 동일)
+    assert fac["학교기관코드"].notna().all(), "학교기관코드 결측"
+    sch_code_dict = list(dict.fromkeys(fac["학교기관코드"].tolist()))
+    _sci = {c: i for i, c in enumerate(sch_code_dict)}
+    assert len(sch_code_dict) < 65536
+    sch_code_idx = [_sci[c] for c in fac["학교기관코드"].tolist()]
+
     code_to_idx = {code: i for i, code in enumerate(fac["시설코드"].tolist())}
     fdf2 = fdf.copy()
     fdf2["_facIdx"] = fdf2["시설코드"].map(code_to_idx)
@@ -419,7 +426,7 @@ def main():
             row.estab_f, row.학교기관종류, row.점검방법, row.운용상태,
             row.지역, row.학교기관구분, row.fatvulnType, row.action, row.resolve,
             row.fuse_f, row.areab, row.stu, row.resolveNoObs, int(row.fv_bits),
-            row.시설코드,
+            row.시설코드, row.학교기관코드,
         ])
 
     def watch_key(r):
@@ -484,6 +491,9 @@ def main():
         "fv": b64_u8(fac["fv_count"].tolist()),
         "fvBits": b64_u8(fac["fv_bits"].tolist()),
         "height10": b64_u16(fac["height10"].tolist()),
+        # v10 추가: 학교/기관코드(예: SE1100003710) — 고유값 16,822개라 사전+2바이트 인덱스로 싣는다.
+        "schCodeDict": sch_code_dict,
+        "schCode": b64_u16(sch_code_idx),
         "facCode": fac["시설코드"].tolist(),
         "watch": watch,
         "official": official,
